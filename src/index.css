@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-bg-dark: #070707;
+  --color-bg-panel: #141414;
+  --color-bg-panel-light: #1f1f1f;
+  
+  --color-gold-light: #FFDF73;
+  --color-gold-main: #D4AF37;
+  --color-gold-dark: #997A15;
+  
+  --color-text-main: #EAEAEA;
+  --color-text-muted: #888888;
+  
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Montserrat', sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-body);
+    background-color: var(--color-bg-dark);
+    background-image: radial-gradient(circle at 50% 10%, #201e1a 0%, #070707 60%);
+    background-attachment: fixed;
+    color: var(--color-text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  .gold-text {
+    background: linear-gradient(135deg, var(--color-gold-light) 0%, var(--color-gold-main) 50%, var(--color-gold-dark) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .btn-gold {
+    background: linear-gradient(135deg, var(--color-gold-light) 0%, var(--color-gold-main) 50%, var(--color-gold-dark) 100%);
+    color: var(--color-bg-dark);
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 1.1rem;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 4px;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.15);
+    width: 100%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .btn-gold:active {
+    transform: scale(0.98);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--color-gold-main);
+    border: 1px solid var(--color-gold-main);
+    padding: 10px 20px;
+    border-radius: 4px;
+    width: 100%;
+    font-size: 1rem;
+    margin-top: 15px;
+    cursor: pointer;
+  }
+}
