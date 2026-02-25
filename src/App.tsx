@@ -38,8 +38,23 @@ export default function App() {
   
   const [filterText, setFilterText] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'rated' | 'unrated' | 'high'>('all');
+  const [logoSrc, setLogoSrc] = useState<string>('https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg');
+  const [logoError, setLogoError] = useState(false);
 
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  const handleLogoError = () => {
+    if (logoSrc === 'https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg') {
+      // Try the icon if the main logo fails
+      setLogoSrc('https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/icon.svg');
+    } else if (logoSrc === 'https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/icon.svg') {
+      // Try a placeholder if the icon fails
+      setLogoSrc('https://placehold.co/400x400/1a1a1a/D4AF37?text=The+Cuba+Libre');
+    } else {
+      // Give up and show the fallback icon
+      setLogoError(true);
+    }
+  };
 
   const showToast = (message: string, type: ToastType = 'info') => {
     setToast({ message, type });
@@ -381,7 +396,18 @@ export default function App() {
                   ease: "easeInOut"
                 }}
               >
-                <Martini className="w-16 h-16 mb-4 text-gold-main drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]" />
+                <div className="w-32 h-32 mb-4 relative flex items-center justify-center">
+                  {!logoError ? (
+                    <img 
+                      src={logoSrc} 
+                      alt="The Cuba Libre Logo" 
+                      className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]"
+                      onError={handleLogoError}
+                    />
+                  ) : (
+                    <Martini className="w-16 h-16 text-gold-main drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]" />
+                  )}
+                </div>
               </motion.div>
               <h1 className="text-4xl leading-tight mb-5 gold-text">The Cuba Libre</h1>
               <h2 className="text-2xl font-heading font-semibold">Rum & Cigar House</h2>
