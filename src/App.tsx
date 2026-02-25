@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, Smartphone, FileDown, ChevronRight, AlertCircle, Check, FileJson, FileSpreadsheet, Image, Edit2, Search } from 'lucide-react';
+import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, Smartphone, FileDown, ChevronRight, AlertCircle, Check, FileJson, FileSpreadsheet, Image, Edit2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 type RatingData = {
@@ -35,26 +35,8 @@ export default function App() {
   const [activeModal, setActiveModal] = useState<'rating' | 'share' | null>(null);
   const [currentSampleId, setCurrentSampleId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-  
-  const [filterText, setFilterText] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'rated' | 'unrated' | 'high'>('all');
-  const [logoSrc, setLogoSrc] = useState<string>('https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg');
-  const [logoError, setLogoError] = useState(false);
 
   const [showOnboarding, setShowOnboarding] = useState(false);
-
-  const handleLogoError = () => {
-    if (logoSrc === 'https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg') {
-      // Try the icon if the main logo fails
-      setLogoSrc('https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/icon.svg');
-    } else if (logoSrc === 'https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/icon.svg') {
-      // Try a placeholder if the icon fails
-      setLogoSrc('https://placehold.co/400x400/1a1a1a/D4AF37?text=The+Cuba+Libre');
-    } else {
-      // Give up and show the fallback icon
-      setLogoError(true);
-    }
-  };
 
   const showToast = (message: string, type: ToastType = 'info') => {
     setToast({ message, type });
@@ -396,18 +378,7 @@ export default function App() {
                   ease: "easeInOut"
                 }}
               >
-                <div className="w-32 h-32 mb-4 relative flex items-center justify-center">
-                  {!logoError ? (
-                    <img 
-                      src={logoSrc} 
-                      alt="The Cuba Libre Logo" 
-                      className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]"
-                      onError={handleLogoError}
-                    />
-                  ) : (
-                    <Martini className="w-16 h-16 text-gold-main drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]" />
-                  )}
-                </div>
+                <Martini className="w-16 h-16 mb-4 text-gold-main drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]" />
               </motion.div>
               <h1 className="text-4xl leading-tight mb-5 gold-text">The Cuba Libre</h1>
               <h2 className="text-2xl font-heading font-semibold">Rum & Cigar House</h2>
@@ -426,133 +397,81 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             className="flex-1 flex flex-col p-5"
           >
-            <header className="text-center py-5 pb-7 border-b border-white/5 mb-6">
+            <header className="text-center py-5 pb-7 border-b border-white/5 mb-8">
               <h2 className="text-2xl tracking-wide gold-text">Degustačný Denník</h2>
               <p className="text-text-muted text-sm mt-2">Zoznam vzoriek</p>
             </header>
 
-            <div className="flex flex-col gap-4 mb-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                <input 
-                  type="text" 
-                  placeholder="Hľadať rum..." 
-                  value={filterText}
-                  onChange={(e) => setFilterText(e.target.value)}
-                  className="w-full bg-bg-panel border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-gold-main/50 transition-colors text-text-main placeholder:text-text-muted/50"
-                />
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                {[
-                  { id: 'all', label: 'Všetky' },
-                  { id: 'rated', label: 'Hodnotené' },
-                  { id: 'unrated', label: 'Nehodnotené' },
-                  { id: 'high', label: 'Top (4+)' }
-                ].map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => setFilterType(f.id as any)}
-                    className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap border transition-colors ${
-                      filterType === f.id 
-                        ? 'bg-gold-main/10 border-gold-main text-gold-main' 
-                        : 'bg-bg-panel border-white/10 text-text-muted hover:border-white/30'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="flex flex-col gap-4 flex-1 content-start">
-              {(() => {
-                const filteredSamples = RUM_SAMPLES
-                  .map((sample, index) => ({ ...sample, id: index + 1 }))
-                  .filter(sample => {
-                    const matchesText = sample.name.toLowerCase().includes(filterText.toLowerCase());
-                    const rating = tastingData[sample.id];
-                    const isRated = !!rating;
-                    
-                    if (!matchesText) return false;
-                    
-                    if (filterType === 'rated') return isRated;
-                    if (filterType === 'unrated') return !isRated;
-                    if (filterType === 'high') return isRated && rating.overall >= 4;
-                    
-                    return true;
-                  });
-
-                if (filteredSamples.length === 0) {
-                   return (
-                    <div className="text-center py-10 text-text-muted">
-                      <p>Žiadne výsledky pre zvolené filtre.</p>
+              {RUM_SAMPLES.map((sample, index) => {
+                const id = index + 1;
+                const isRated = !!tastingData[id];
+                const rating = tastingData[id];
+                const isSelected = currentSampleId === id;
+                const imageUrl = customImages[id] || sample.image;
+                
+                return (
+                  <motion.div
+                    key={id}
+                    onClick={() => openRatingModal(id)}
+                    whileTap={{ scale: 0.98 }}
+                    animate={{ 
+                      scale: isSelected ? 1.02 : 1,
+                      borderColor: isSelected ? '#D4AF37' : 'rgba(255, 255, 255, 0.05)'
+                    }}
+                    className={`
+                      border rounded-xl p-4 shadow-lg cursor-pointer relative flex items-center gap-4
+                      active:bg-bg-panel-light transition-all duration-300 overflow-hidden group
+                      ${isRated 
+                        ? `bg-gradient-to-r ${rating.overall >= 4.5 ? 'from-bg-panel to-gold-main/20' : rating.overall >= 3.5 ? 'from-bg-panel to-gold-main/10' : 'from-bg-panel to-gold-main/5'}` 
+                        : 'bg-bg-panel'}
+                      ${isSelected 
+                        ? 'shadow-[0_0_20px_rgba(212,175,55,0.2)]' 
+                        : 'hover:border-gold-main/40'}
+                    `}
+                  >
+                    <div className={`
+                      w-12 h-16 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-black/20
+                      ${isRated ? 'border border-gold-main/30' : 'border border-white/5'}
+                    `}>
+                      <img 
+                        src={imageUrl} 
+                        alt={sample.name} 
+                        className="w-full h-full object-cover opacity-90"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://placehold.co/100x200?text=No+Image';
+                        }}
+                      />
                     </div>
-                   );
-                }
 
-                return filteredSamples.map((sample) => {
-                  const { id, name, image } = sample;
-                  const isRated = !!tastingData[id];
-                  const rating = tastingData[id];
-                  const isSelected = currentSampleId === id;
-                  const imageUrl = customImages[id] || image;
-                  
-                  return (
-                    <motion.div
-                      key={id}
-                      onClick={() => openRatingModal(id)}
-                      whileTap={{ scale: 0.98 }}
-                      layout
-                      animate={{ 
-                        scale: isSelected ? 1.02 : 1,
-                        borderColor: isSelected ? '#D4AF37' : 'rgba(255, 255, 255, 0.05)'
-                      }}
-                      className={`
-                        border rounded-xl p-4 shadow-lg cursor-pointer relative flex items-center gap-4
-                        active:bg-bg-panel-light transition-all duration-300 overflow-hidden group
-                        ${isRated 
-                          ? `bg-gradient-to-r ${rating.overall >= 4.5 ? 'from-bg-panel to-gold-main/20' : rating.overall >= 3.5 ? 'from-bg-panel to-gold-main/10' : 'from-bg-panel to-gold-main/5'}` 
-                          : 'bg-bg-panel'}
-                        ${isSelected 
-                          ? 'shadow-[0_0_20px_rgba(212,175,55,0.2)]' 
-                          : 'hover:border-gold-main/40'}
-                      `}
-                    >
-                      <div className={`
-                        w-12 h-16 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-black/20
-                        ${isRated ? 'border border-gold-main/30' : 'border border-white/5'}
-                      `}>
-                        <img src={imageUrl} alt={name} className="w-full h-full object-cover opacity-90" />
-                      </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <h3 className={`font-body font-medium text-base truncate ${isRated ? 'text-gold-light' : 'text-text-main'}`}>
+                        {sample.name}
+                      </h3>
+                      {isRated ? (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Star className="w-3 h-3 text-gold-main fill-gold-main" />
+                          <span className="text-xs text-gold-main font-mono">{rating.overall}/5</span>
+                          <span className="text-xs text-text-muted ml-2 truncate max-w-[150px] italic">
+                            {rating.notes ? `"${rating.notes}"` : 'Hodnotené'}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-text-muted mt-1">Klepnite pre hodnotenie</p>
+                      )}
+                    </div>
 
-                      <div className="flex-1 min-w-0 text-left">
-                        <h3 className={`font-body font-medium text-base truncate ${isRated ? 'text-gold-light' : 'text-text-main'}`}>
-                          {name}
-                        </h3>
-                        {isRated ? (
-                          <div className="flex items-center gap-1 mt-1">
-                            <Star className="w-3 h-3 text-gold-main fill-gold-main" />
-                            <span className="text-xs text-gold-main font-mono">{rating.overall}/5</span>
-                            <span className="text-xs text-text-muted ml-2 truncate max-w-[150px] italic">
-                              {rating.notes ? `"${rating.notes}"` : 'Hodnotené'}
-                            </span>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-text-muted mt-1">Klepnite pre hodnotenie</p>
-                        )}
-                      </div>
-
-                      <div className="shrink-0">
-                        {isRated ? (
-                           <CheckCircle className="w-6 h-6 text-gold-main drop-shadow-[0_0_5px_rgba(212,175,55,0.5)]" />
-                        ) : (
-                          <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-gold-main transition-colors" />
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                });
-              })()}
+                    <div className="shrink-0">
+                      {isRated ? (
+                         <CheckCircle className="w-6 h-6 text-gold-main drop-shadow-[0_0_5px_rgba(212,175,55,0.5)]" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-gold-main transition-colors" />
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
 
             <footer className="mt-8 pb-5 text-center space-y-3">
@@ -766,6 +685,7 @@ function RatingModal({
               src={imageUrl} 
               alt={RUM_SAMPLES[sampleId - 1].name} 
               className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=No+Image';
               }}
