@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, Smartphone, FileDown, ChevronRight, AlertCircle, Check, FileJson, FileSpreadsheet } from 'lucide-react';
+import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, Smartphone, FileDown, ChevronRight, AlertCircle, Check, FileJson, FileSpreadsheet, Image, Edit2, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 type RatingData = {
@@ -18,12 +18,12 @@ type RumSample = {
 };
 
 const RUM_SAMPLES: RumSample[] = [
-  { name: "Eminente Reserva 7yo", image: "https://placehold.co/100x200?text=Eminente+7yo" },
-  { name: "Eminente Grand Reserva 10yo", image: "https://placehold.co/100x200?text=Eminente+10yo" },
-  { name: "Eminente Gran Reserva n.2 10 yo", image: "https://placehold.co/100x200?text=Eminente+n.2" },
-  { name: "Cristobál Niña", image: "https://placehold.co/100x200?text=Cristobal" },
-  { name: "Canerock", image: "https://placehold.co/100x200?text=Canerock" },
-  { name: "Compañero Coconut", image: "https://placehold.co/100x200?text=Companero" }
+  { name: "Eminente Reserva 7yo", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminente%207.png" },
+  { name: "Eminente Grand Reserva 10yo", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteGranreserva.png" },
+  { name: "Eminente Gran Reserva n.2 10 yo", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminenteno2.png" },
+  { name: "Cristobál Niña", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Cristobao.png" },
+  { name: "Canerock", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Canerock.png" },
+  { name: "Compañero Coconut", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Companero.png" }
 ];
 
 const TOTAL_SAMPLES = RUM_SAMPLES.length;
@@ -31,9 +31,13 @@ const TOTAL_SAMPLES = RUM_SAMPLES.length;
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<'splash' | 'dashboard'>('splash');
   const [tastingData, setTastingData] = useState<Record<number, RatingData>>({});
+  const [customImages, setCustomImages] = useState<Record<number, string>>({});
   const [activeModal, setActiveModal] = useState<'rating' | 'share' | null>(null);
   const [currentSampleId, setCurrentSampleId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  
+  const [filterText, setFilterText] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'rated' | 'unrated' | 'high'>('all');
 
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -50,6 +54,15 @@ export default function App() {
       } catch (e) {
         console.error('Failed to parse tasting data', e);
         showToast('Nepodarilo sa načítať uložené dáta.', 'error');
+      }
+    }
+
+    const savedImages = localStorage.getItem('cubaLibreImages');
+    if (savedImages) {
+      try {
+        setCustomImages(JSON.parse(savedImages));
+      } catch (e) {
+        console.error('Failed to parse images', e);
       }
     }
 
@@ -72,6 +85,18 @@ export default function App() {
     } catch (e) {
       console.error('Failed to save data', e);
       showToast('Chyba pri ukladaní dát. Skontrolujte miesto v úložisku.', 'error');
+    }
+  };
+
+  const saveCustomImage = (id: number, url: string) => {
+    try {
+      const newImages = { ...customImages, [id]: url };
+      setCustomImages(newImages);
+      localStorage.setItem('cubaLibreImages', JSON.stringify(newImages));
+      showToast('Obrázok bol aktualizovaný.', 'success');
+    } catch (e) {
+      console.error('Failed to save image', e);
+      showToast('Nepodarilo sa uložiť obrázok.', 'error');
     }
   };
 
@@ -375,72 +400,133 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             className="flex-1 flex flex-col p-5"
           >
-            <header className="text-center py-5 pb-7 border-b border-white/5 mb-8">
+            <header className="text-center py-5 pb-7 border-b border-white/5 mb-6">
               <h2 className="text-2xl tracking-wide gold-text">Degustačný Denník</h2>
               <p className="text-text-muted text-sm mt-2">Zoznam vzoriek</p>
             </header>
 
-            <div className="flex flex-col gap-4 flex-1 content-start">
-              {RUM_SAMPLES.map((sample, index) => {
-                const id = index + 1;
-                const isRated = !!tastingData[id];
-                const rating = tastingData[id];
-                const isSelected = currentSampleId === id;
-                
-                return (
-                  <motion.div
-                    key={id}
-                    onClick={() => openRatingModal(id)}
-                    whileTap={{ scale: 0.98 }}
-                    animate={{ 
-                      scale: isSelected ? 1.02 : 1,
-                      borderColor: isSelected ? '#D4AF37' : 'rgba(255, 255, 255, 0.05)'
-                    }}
-                    className={`
-                      border rounded-xl p-4 shadow-lg cursor-pointer relative flex items-center gap-4
-                      active:bg-bg-panel-light transition-all duration-300 overflow-hidden group
-                      ${isRated 
-                        ? `bg-gradient-to-r ${rating.overall >= 4.5 ? 'from-bg-panel to-gold-main/20' : rating.overall >= 3.5 ? 'from-bg-panel to-gold-main/10' : 'from-bg-panel to-gold-main/5'}` 
-                        : 'bg-bg-panel'}
-                      ${isSelected 
-                        ? 'shadow-[0_0_20px_rgba(212,175,55,0.2)]' 
-                        : 'hover:border-gold-main/40'}
-                    `}
+            <div className="flex flex-col gap-4 mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                <input 
+                  type="text" 
+                  placeholder="Hľadať rum..." 
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  className="w-full bg-bg-panel border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-gold-main/50 transition-colors text-text-main placeholder:text-text-muted/50"
+                />
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {[
+                  { id: 'all', label: 'Všetky' },
+                  { id: 'rated', label: 'Hodnotené' },
+                  { id: 'unrated', label: 'Nehodnotené' },
+                  { id: 'high', label: 'Top (4+)' }
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => setFilterType(f.id as any)}
+                    className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap border transition-colors ${
+                      filterType === f.id 
+                        ? 'bg-gold-main/10 border-gold-main text-gold-main' 
+                        : 'bg-bg-panel border-white/10 text-text-muted hover:border-white/30'
+                    }`}
                   >
-                    <div className={`
-                      w-12 h-16 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-black/20
-                      ${isRated ? 'border border-gold-main/30' : 'border border-white/5'}
-                    `}>
-                      <img src={sample.image} alt={sample.name} className="w-full h-full object-cover opacity-90" />
-                    </div>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                    <div className="flex-1 min-w-0 text-left">
-                      <h3 className={`font-body font-medium text-base truncate ${isRated ? 'text-gold-light' : 'text-text-main'}`}>
-                        {sample.name}
-                      </h3>
-                      {isRated ? (
-                        <div className="flex items-center gap-1 mt-1">
-                          <Star className="w-3 h-3 text-gold-main fill-gold-main" />
-                          <span className="text-xs text-gold-main font-mono">{rating.overall}/5</span>
-                          <span className="text-xs text-text-muted ml-2 truncate max-w-[150px] italic">
-                            {rating.notes ? `"${rating.notes}"` : 'Hodnotené'}
-                          </span>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-text-muted mt-1">Klepnite pre hodnotenie</p>
-                      )}
-                    </div>
+            <div className="flex flex-col gap-4 flex-1 content-start">
+              {(() => {
+                const filteredSamples = RUM_SAMPLES
+                  .map((sample, index) => ({ ...sample, id: index + 1 }))
+                  .filter(sample => {
+                    const matchesText = sample.name.toLowerCase().includes(filterText.toLowerCase());
+                    const rating = tastingData[sample.id];
+                    const isRated = !!rating;
+                    
+                    if (!matchesText) return false;
+                    
+                    if (filterType === 'rated') return isRated;
+                    if (filterType === 'unrated') return !isRated;
+                    if (filterType === 'high') return isRated && rating.overall >= 4;
+                    
+                    return true;
+                  });
 
-                    <div className="shrink-0">
-                      {isRated ? (
-                         <CheckCircle className="w-6 h-6 text-gold-main drop-shadow-[0_0_5px_rgba(212,175,55,0.5)]" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-gold-main transition-colors" />
-                      )}
+                if (filteredSamples.length === 0) {
+                   return (
+                    <div className="text-center py-10 text-text-muted">
+                      <p>Žiadne výsledky pre zvolené filtre.</p>
                     </div>
-                  </motion.div>
-                );
-              })}
+                   );
+                }
+
+                return filteredSamples.map((sample) => {
+                  const { id, name, image } = sample;
+                  const isRated = !!tastingData[id];
+                  const rating = tastingData[id];
+                  const isSelected = currentSampleId === id;
+                  const imageUrl = customImages[id] || image;
+                  
+                  return (
+                    <motion.div
+                      key={id}
+                      onClick={() => openRatingModal(id)}
+                      whileTap={{ scale: 0.98 }}
+                      layout
+                      animate={{ 
+                        scale: isSelected ? 1.02 : 1,
+                        borderColor: isSelected ? '#D4AF37' : 'rgba(255, 255, 255, 0.05)'
+                      }}
+                      className={`
+                        border rounded-xl p-4 shadow-lg cursor-pointer relative flex items-center gap-4
+                        active:bg-bg-panel-light transition-all duration-300 overflow-hidden group
+                        ${isRated 
+                          ? `bg-gradient-to-r ${rating.overall >= 4.5 ? 'from-bg-panel to-gold-main/20' : rating.overall >= 3.5 ? 'from-bg-panel to-gold-main/10' : 'from-bg-panel to-gold-main/5'}` 
+                          : 'bg-bg-panel'}
+                        ${isSelected 
+                          ? 'shadow-[0_0_20px_rgba(212,175,55,0.2)]' 
+                          : 'hover:border-gold-main/40'}
+                      `}
+                    >
+                      <div className={`
+                        w-12 h-16 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-black/20
+                        ${isRated ? 'border border-gold-main/30' : 'border border-white/5'}
+                      `}>
+                        <img src={imageUrl} alt={name} className="w-full h-full object-cover opacity-90" />
+                      </div>
+
+                      <div className="flex-1 min-w-0 text-left">
+                        <h3 className={`font-body font-medium text-base truncate ${isRated ? 'text-gold-light' : 'text-text-main'}`}>
+                          {name}
+                        </h3>
+                        {isRated ? (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Star className="w-3 h-3 text-gold-main fill-gold-main" />
+                            <span className="text-xs text-gold-main font-mono">{rating.overall}/5</span>
+                            <span className="text-xs text-text-muted ml-2 truncate max-w-[150px] italic">
+                              {rating.notes ? `"${rating.notes}"` : 'Hodnotené'}
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-text-muted mt-1">Klepnite pre hodnotenie</p>
+                        )}
+                      </div>
+
+                      <div className="shrink-0">
+                        {isRated ? (
+                           <CheckCircle className="w-6 h-6 text-gold-main drop-shadow-[0_0_5px_rgba(212,175,55,0.5)]" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-gold-main transition-colors" />
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                });
+              })()}
             </div>
 
             <footer className="mt-8 pb-5 text-center space-y-3">
@@ -471,11 +557,13 @@ export default function App() {
           <RatingModal
             sampleId={currentSampleId}
             initialData={tastingData[currentSampleId]}
+            customImage={customImages[currentSampleId]}
             onClose={() => setActiveModal(null)}
             onSave={(data) => {
               saveTastingData({ ...tastingData, [currentSampleId]: data });
               setActiveModal(null);
             }}
+            onSaveImage={(url) => saveCustomImage(currentSampleId, url)}
           />
         )}
         {activeModal === 'share' && (
@@ -573,20 +661,31 @@ function OnboardingModal({ onClose }: { onClose: () => void }) {
 function RatingModal({
   sampleId,
   initialData,
+  customImage,
   onClose,
   onSave,
+  onSaveImage,
 }: {
   sampleId: number;
   initialData?: RatingData;
+  customImage?: string;
   onClose: () => void;
   onSave: (data: RatingData) => void;
+  onSaveImage: (url: string) => void;
 }) {
   const [rating, setRating] = useState<RatingData>(
     initialData || { visual: 0, aroma: 0, taste: 0, overall: 0, notes: '' }
   );
+  const [isEditingImage, setIsEditingImage] = useState(false);
+  const [imageUrl, setImageUrl] = useState(customImage || RUM_SAMPLES[sampleId - 1].image);
 
   const updateRating = (category: keyof Omit<RatingData, 'notes'>, value: number) => {
     setRating((prev) => ({ ...prev, [category]: value }));
+  };
+
+  const handleImageSave = () => {
+    onSaveImage(imageUrl);
+    setIsEditingImage(false);
   };
 
   return (
@@ -603,6 +702,49 @@ function RatingModal({
           <button onClick={onClose} className="text-text-muted hover:text-text-main transition-colors ml-4">
             <X className="w-6 h-6" />
           </button>
+        </div>
+
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-text-muted text-sm uppercase tracking-wide flex items-center gap-2">
+              <Image className="w-4 h-4" /> Fotka vzorky
+            </label>
+            <button 
+              onClick={() => setIsEditingImage(!isEditingImage)}
+              className="text-gold-main text-xs flex items-center gap-1 hover:underline"
+            >
+              <Edit2 className="w-3 h-3" /> {isEditingImage ? 'Zrušiť' : 'Upraviť'}
+            </button>
+          </div>
+          
+          {isEditingImage ? (
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://..."
+                className="flex-1 bg-bg-dark border border-gold-main/40 rounded px-3 py-2 text-sm text-text-main focus:outline-none focus:border-gold-main"
+              />
+              <button 
+                onClick={handleImageSave}
+                className="bg-gold-main text-bg-dark px-3 py-2 rounded text-sm font-semibold hover:bg-gold-light"
+              >
+                OK
+              </button>
+            </div>
+          ) : null}
+
+          <div className="w-full h-48 rounded-lg overflow-hidden border border-white/10 relative group">
+            <img 
+              src={imageUrl} 
+              alt={RUM_SAMPLES[sampleId - 1].name} 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=No+Image';
+              }}
+            />
+          </div>
         </div>
 
         <div className="space-y-6 mb-6">
