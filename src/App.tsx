@@ -18,12 +18,12 @@ type RumSample = {
 };
 
 const RUM_SAMPLES: RumSample[] = [
-  { name: "Eminente Ambar Claro", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteAmbarClaro.png" },
-  { name: "Eminente Carta Oro", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteCartaOro.png" },
-  { name: "Eminente Reserva 7YO", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminente%207.png" },
-  { name: "Eminente Gran Reserva 10YO No. 1", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteGranreserva.png" },
-  { name: "Eminente Grand Reserva 10YO No.2", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminenteno2.png" },
-  { name: "Eminente Signatura Cocodrilo 14YO", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteCocodrilo.png" }
+  { name: "Eminente Ambar Claro", image: "https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/EminenteAmbarClaro.png" },
+  { name: "Eminente Carta Oro", image: "https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/EminenteCartaOro.png" },
+  { name: "Eminente Reserva 7YO", image: "https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/Eminente%207.png" },
+  { name: "Eminente Gran Reserva 10YO No. 1", image: "https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/EminenteGranreserva.png" },
+  { name: "Eminente Grand Reserva 10YO No.2", image: "https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/Eminenteno2.png" },
+  { name: "Eminente Signatura Cocodrilo 14YO", image: "https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/EminenteCocodrilo.png" }
 ];
 
 const TOTAL_SAMPLES = RUM_SAMPLES.length;
@@ -380,12 +380,12 @@ export default function App() {
                 className="mb-6"
               >
                 <img 
-                  src="https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg" 
+                  src="https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/Logocuba.jpg" 
                   alt="The Cuba Libre Logo" 
                   className="w-32 h-32 object-cover rounded-full border-2 border-gold-main/30 shadow-[0_0_15px_rgba(212,175,55,0.3)]"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://placehold.co/400x400?text=The+Cuba+Libre';
+                    (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/141414/D4AF37?text=The+Cuba+Libre';
                   }}
                 />
               </motion.div>
@@ -449,7 +449,7 @@ export default function App() {
                         className="w-full h-full object-cover opacity-90"
                         referrerPolicy="no-referrer"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://placehold.co/100x200?text=No+Image';
+                          (e.target as HTMLImageElement).src = `https://placehold.co/100x200/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
                         }}
                       />
                     </div>
@@ -759,7 +759,7 @@ function RatingModal({
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=No+Image';
+                (e.target as HTMLImageElement).src = `https://placehold.co/600x400/141414/D4AF37?text=${encodeURIComponent(RUM_SAMPLES[sampleId - 1].name.split(' ').join('\n'))}`;
               }}
             />
           </div>
