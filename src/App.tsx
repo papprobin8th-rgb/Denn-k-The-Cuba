@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, Smartphone, FileDown, ChevronRight, AlertCircle, Check, FileJson, FileSpreadsheet, Image, Edit2 } from 'lucide-react';
+import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, Smartphone, FileDown, ChevronRight, AlertCircle, Check, FileJson, FileSpreadsheet, Image, Edit2, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 type RatingData = {
@@ -18,12 +18,12 @@ type RumSample = {
 };
 
 const RUM_SAMPLES: RumSample[] = [
-  { name: "Eminente Reserva 7yo", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminente%207.png" },
-  { name: "Eminente Grand Reserva 10yo", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteGranreserva.png" },
-  { name: "Eminente Gran Reserva n.2 10 yo", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminenteno2.png" },
-  { name: "Cristobál Niña", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Cristobao.png" },
-  { name: "Canerock", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Canerock.png" },
-  { name: "Compañero Coconut", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Companero.png" }
+  { name: "Eminente Ambar Claro", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteAmbarClaro.png" },
+  { name: "Eminente Carta Oro", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteCartaOro.png" },
+  { name: "Eminente Reserva 7YO", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminente%207.png" },
+  { name: "Eminente Gran Reserva 10YO No. 1", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteGranreserva.png" },
+  { name: "Eminente Grand Reserva 10YO No.2", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminenteno2.png" },
+  { name: "Eminente Signatura Cocodrilo 14YO", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteCocodrilo.png" }
 ];
 
 const TOTAL_SAMPLES = RUM_SAMPLES.length;
@@ -377,8 +377,17 @@ export default function App() {
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
+                className="mb-6"
               >
-                <Martini className="w-16 h-16 mb-4 text-gold-main drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]" />
+                <img 
+                  src="https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg" 
+                  alt="The Cuba Libre Logo" 
+                  className="w-32 h-32 object-cover rounded-full border-2 border-gold-main/30 shadow-[0_0_15px_rgba(212,175,55,0.3)]"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://placehold.co/400x400?text=The+Cuba+Libre';
+                  }}
+                />
               </motion.div>
               <h1 className="text-4xl leading-tight mb-5 gold-text">The Cuba Libre</h1>
               <h2 className="text-2xl font-heading font-semibold">Rum & Cigar House</h2>
@@ -633,6 +642,48 @@ function RatingModal({
     setIsEditingImage(false);
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 600;
+        const MAX_HEIGHT = 600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          setImageUrl(dataUrl);
+          onSaveImage(dataUrl);
+          setIsEditingImage(false);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex justify-center items-end z-50">
       <motion.div
@@ -663,20 +714,41 @@ function RatingModal({
           </div>
           
           {isEditingImage ? (
-            <div className="flex gap-2 mb-3">
-              <input
-                type="text"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://..."
-                className="flex-1 bg-bg-dark border border-gold-main/40 rounded px-3 py-2 text-sm text-text-main focus:outline-none focus:border-gold-main"
-              />
-              <button 
-                onClick={handleImageSave}
-                className="bg-gold-main text-bg-dark px-3 py-2 rounded text-sm font-semibold hover:bg-gold-light"
-              >
-                OK
-              </button>
+            <div className="flex flex-col gap-3 mb-4">
+              <div className="relative overflow-hidden group">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleFileUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <div className="w-full bg-bg-panel-light border border-dashed border-gold-main/40 rounded-lg px-3 py-6 text-center text-sm text-text-muted flex flex-col items-center gap-3 group-hover:border-gold-main group-hover:bg-gold-main/5 transition-all">
+                  <Camera className="w-8 h-8 text-gold-main" />
+                  <span>Odfotiť alebo nahrať z galérie</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 my-1">
+                <div className="flex-1 h-px bg-white/10"></div>
+                <span className="text-xs text-text-muted uppercase">alebo URL</span>
+                <div className="flex-1 h-px bg-white/10"></div>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="flex-1 bg-bg-dark border border-gold-main/40 rounded px-3 py-2 text-sm text-text-main focus:outline-none focus:border-gold-main"
+                />
+                <button 
+                  onClick={handleImageSave}
+                  className="bg-gold-main text-bg-dark px-3 py-2 rounded text-sm font-semibold hover:bg-gold-light"
+                >
+                  OK
+                </button>
+              </div>
             </div>
           ) : null}
 
