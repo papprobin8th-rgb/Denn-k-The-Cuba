@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import { initializeFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,7 +14,12 @@ const firebaseConfig = {
 // Initialize Firebase only if config is provided
 const app = firebaseConfig.apiKey ? initializeApp(firebaseConfig) : null;
 export const auth = app ? getAuth(app) : null;
-export const db = app ? getFirestore(app) : null;
+
+// Use initializeFirestore with experimentalForceLongPolling to fix "offline" errors in iframes
+export const db = app ? initializeFirestore(app, {
+  experimentalForceLongPolling: true
+}) : null;
+
 export const googleProvider = new GoogleAuthProvider();
 
 export { signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc };
