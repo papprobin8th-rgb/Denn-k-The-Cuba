@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, Smartphone, FileDown, ChevronRight, AlertCircle, Check, FileJson, FileSpreadsheet, Image, Edit2, Camera } from 'lucide-react';
+import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, Smartphone, FileDown, ChevronRight, AlertCircle, Check, FileJson, FileSpreadsheet, Image, Edit2, Camera, LogIn, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc } from './lib/firebase';
+import { User } from 'firebase/auth';
 
 type RatingData = {
   visual: number;
@@ -37,21 +39,24 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
 
   const showToast = (message: string, type: ToastType = 'info') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  useEffect(() => {
+  const loadLocalData = () => {
     const saved = localStorage.getItem('cubaLibreDiary');
     if (saved) {
       try {
         setTastingData(JSON.parse(saved));
       } catch (e) {
         console.error('Failed to parse tasting data', e);
-        showToast('Nepodarilo sa načítať uložené dáta.', 'error');
       }
+    } else {
+      setTastingData({});
     }
 
     const savedImages = localStorage.getItem('cubaLibreImages');
@@ -61,13 +66,102 @@ export default function App() {
       } catch (e) {
         console.error('Failed to parse images', e);
       }
+    } else {
+      setCustomImages({});
     }
+  };
 
+  const loadFirestoreData = async (uid: string) => {
+    if (!db) return;
+    try {
+      const docRef = doc(db, 'users', uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.tastingData) {
+          setTastingData(data.tastingData);
+          localStorage.setItem('cubaLibreDiary', JSON.stringify(data.tastingData));
+        }
+        if (data.customImages) {
+          setCustomImages(data.customImages);
+          localStorage.setItem('cubaLibreImages', JSON.stringify(data.customImages));
+        }
+      } else {
+        // No remote data, sync local data up
+        const localTasting = JSON.parse(localStorage.getItem('cubaLibreDiary') || '{}');
+        const localImages = JSON.parse(localStorage.getItem('cubaLibreImages') || '{}');
+        if (Object.keys(localTasting).length > 0 || Object.keys(localImages).length > 0) {
+          await syncToFirestore(localTasting, localImages, uid);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load from Firestore', e);
+      showToast('Nepodarilo sa načítať dáta z cloudu.', 'error');
+      loadLocalData();
+    }
+  };
+
+  useEffect(() => {
     const onboardingComplete = localStorage.getItem('onboardingComplete');
     if (!onboardingComplete) {
       setShowOnboarding(true);
     }
+
+    if (!auth) {
+      setIsLoadingUser(false);
+      loadLocalData();
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        await loadFirestoreData(currentUser.uid);
+      } else {
+        loadLocalData();
+      }
+      setIsLoadingUser(false);
+    });
+
+    return () => unsubscribe();
   }, []);
+
+  const handleLogin = async () => {
+    if (!auth) {
+      showToast('Firebase nie je nakonfigurovaný.', 'error');
+      return;
+    }
+    try {
+      await signInWithPopup(auth, googleProvider);
+      showToast('Prihlásenie úspešné.', 'success');
+    } catch (error) {
+      console.error('Login failed', error);
+      showToast('Nepodarilo sa prihlásiť.', 'error');
+    }
+  };
+
+  const handleLogout = async () => {
+    if (!auth) return;
+    try {
+      await signOut(auth);
+      showToast('Odhlásenie úspešné.', 'info');
+    } catch (error) {
+      console.error('Logout failed', error);
+    }
+  };
+
+  const syncToFirestore = async (newTastingData: Record<number, RatingData>, newCustomImages: Record<number, string>, uid: string = user?.uid || '') => {
+    if (!uid || !db) return;
+    try {
+      await setDoc(doc(db, 'users', uid), {
+        tastingData: newTastingData,
+        customImages: newCustomImages,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (e) {
+      console.error('Failed to sync to Firestore', e);
+    }
+  };
 
   const completeOnboarding = () => {
     setShowOnboarding(false);
@@ -78,6 +172,7 @@ export default function App() {
     try {
       setTastingData(data);
       localStorage.setItem('cubaLibreDiary', JSON.stringify(data));
+      if (user) syncToFirestore(data, customImages);
       showToast('Hodnotenie bolo uložené.', 'success');
     } catch (e) {
       console.error('Failed to save data', e);
@@ -90,6 +185,7 @@ export default function App() {
       const newImages = { ...customImages, [id]: url };
       setCustomImages(newImages);
       localStorage.setItem('cubaLibreImages', JSON.stringify(newImages));
+      if (user) syncToFirestore(tastingData, newImages);
       showToast('Obrázok bol aktualizovaný.', 'success');
     } catch (e) {
       console.error('Failed to save image', e);
@@ -406,9 +502,29 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             className="flex-1 flex flex-col p-5"
           >
-            <header className="text-center py-5 pb-7 border-b border-white/5 mb-8">
+            <header className="text-center py-5 pb-7 border-b border-white/5 mb-8 relative">
               <h2 className="text-2xl tracking-wide gold-text">Degustačný Denník</h2>
               <p className="text-text-muted text-sm mt-2">Zoznam vzoriek</p>
+              
+              <div className="absolute top-5 right-0">
+                {isLoadingUser ? (
+                  <div className="w-8 h-8 rounded-full border-2 border-gold-main/30 border-t-gold-main animate-spin mx-auto"></div>
+                ) : user ? (
+                  <button onClick={handleLogout} className="text-xs text-text-muted hover:text-gold-main flex flex-col items-center transition-colors">
+                    {user.photoURL ? (
+                      <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full mb-1 border border-gold-main/50" />
+                    ) : (
+                      <LogOut className="w-6 h-6 mb-1" />
+                    )}
+                    Odhlásiť
+                  </button>
+                ) : (
+                  <button onClick={handleLogin} className="text-xs text-text-muted hover:text-gold-main flex flex-col items-center transition-colors">
+                    <LogIn className="w-6 h-6 mb-1" />
+                    Prihlásiť
+                  </button>
+                )}
+              </div>
             </header>
 
             <div className="flex flex-col gap-4 flex-1 content-start">
