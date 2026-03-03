@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Martini, Wine, CheckCircle, Bookmark, X, Star, ChevronRight, AlertCircle, Check, Image, Edit2, Camera, LogIn, LogOut } from 'lucide-react';
+import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, ChevronRight, AlertCircle, Check, Image, Edit2, Camera, LogIn, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc } from './lib/firebase';
 import { User } from 'firebase/auth';
