@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, Smartphone, FileDown, ChevronRight, AlertCircle, Check, FileJson, FileSpreadsheet, Image, Edit2, Camera, LogIn, LogOut } from 'lucide-react';
+import { Martini, Wine, CheckCircle, Bookmark, X, Star, ChevronRight, AlertCircle, Check, Image, Edit2, Camera, LogIn, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc } from './lib/firebase';
 import { User } from 'firebase/auth';
@@ -34,7 +34,7 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<'splash' | 'dashboard'>('splash');
   const [tastingData, setTastingData] = useState<Record<number, RatingData>>({});
   const [customImages, setCustomImages] = useState<Record<number, string>>({});
-  const [activeModal, setActiveModal] = useState<'rating' | 'share' | null>(null);
+  const [activeModal, setActiveModal] = useState<'rating' | null>(null);
   const [currentSampleId, setCurrentSampleId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
@@ -190,242 +190,6 @@ export default function App() {
     } catch (e) {
       console.error('Failed to save image', e);
       showToast('Nepodarilo sa uložiť obrázok.', 'error');
-    }
-  };
-
-  const exportDataAsJson = () => {
-    try {
-      const dataStr = JSON.stringify(tastingData, null, 2);
-      const blob = new Blob([dataStr], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `cuba-libre-tasting-data-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast('Dáta boli úspešne exportované.', 'success');
-    } catch (e) {
-      console.error('Export failed', e);
-      showToast('Nepodarilo sa exportovať dáta.', 'error');
-    }
-  };
-
-  const exportDataAsHtml = () => {
-    try {
-      const htmlContent = `
-<!DOCTYPE html>
-<html lang="sk">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The Cuba Libre | Degustačný Denník</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
-    
-    :root {
-      --color-bg-dark: #070707;
-      --color-bg-panel: #141414;
-      --color-bg-panel-light: #1f1f1f;
-      --color-gold-light: #FFDF73;
-      --color-gold-main: #D4AF37;
-      --color-gold-dark: #997A15;
-      --color-text-main: #EAEAEA;
-      --color-text-muted: #888888;
-      --font-heading: 'Playfair Display', serif;
-      --font-body: 'Montserrat', sans-serif;
-    }
-
-    body {
-      font-family: var(--font-body);
-      background-color: var(--color-bg-dark);
-      background-image: radial-gradient(circle at 50% 10%, #201e1a 0%, #070707 60%);
-      background-attachment: fixed;
-      color: var(--color-text-main);
-      margin: 0;
-      padding: 20px;
-      min-height: 100vh;
-    }
-
-    .container {
-      max-width: 480px;
-      margin: 0 auto;
-    }
-
-    h1, h2, h3 {
-      font-family: var(--font-heading);
-      font-weight: 600;
-      margin: 0;
-    }
-
-    .gold-text {
-      background: linear-gradient(135deg, var(--color-gold-light) 0%, var(--color-gold-main) 50%, var(--color-gold-dark) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      display: inline-block;
-    }
-
-    .header {
-      text-align: center;
-      padding-bottom: 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      margin-bottom: 30px;
-    }
-
-    .card {
-      background-color: var(--color-bg-panel);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    }
-
-    .card.rated {
-      background: linear-gradient(to bottom right, var(--color-bg-panel), rgba(212, 175, 55, 0.05));
-      border-color: rgba(212, 175, 55, 0.3);
-    }
-
-    .rum-name {
-      font-size: 1.1rem;
-      margin-bottom: 8px;
-      color: var(--color-gold-light);
-    }
-
-    .rating-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .star {
-      color: var(--color-gold-main);
-      fill: var(--color-gold-main);
-    }
-
-    .notes {
-      font-style: italic;
-      color: var(--color-text-muted);
-      font-size: 0.9rem;
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .score-badge {
-      background: rgba(0, 0, 0, 0.4);
-      padding: 2px 6px;
-      border-radius: 4px;
-      border: 1px solid rgba(212, 175, 55, 0.2);
-      font-family: monospace;
-      color: var(--color-gold-main);
-      font-size: 0.8rem;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h2 class="gold-text" style="font-size: 1.5rem;">Degustačný Denník</h2>
-      <p style="color: var(--color-text-muted); font-size: 0.9rem; margin-top: 8px;">The Cuba Libre - Rum & Cigar House</p>
-    </div>
-
-    <div id="content">
-      ${RUM_SAMPLES.map((sample, index) => {
-        const id = index + 1;
-        const data = tastingData[id];
-        if (!data) return '';
-        
-        return `
-          <div class="card rated">
-            <h3 class="rum-name">${sample.name}</h3>
-            <div class="rating-row">
-              <span class="score-badge">Celkovo: ${data.overall}/5</span>
-              <span class="score-badge">Vizuál: ${data.visual}</span>
-              <span class="score-badge">Vôňa: ${data.aroma}</span>
-              <span class="score-badge">Chuť: ${data.taste}</span>
-            </div>
-            ${data.notes ? `<div class="notes">"${data.notes}"</div>` : ''}
-          </div>
-        `;
-      }).join('')}
-      
-      ${Object.keys(tastingData).length === 0 ? '<p style="text-align: center; color: var(--color-text-muted);">Zatiaľ žiadne záznamy.</p>' : ''}
-    </div>
-    
-    <div style="text-align: center; margin-top: 40px; color: var(--color-text-muted); font-size: 0.8rem;">
-      Vygenerované dňa ${new Date().toLocaleDateString('sk-SK')}
-    </div>
-  </div>
-</body>
-</html>
-      `;
-
-      const blob = new Blob([htmlContent], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'cuba-libre-dennik.html';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      showToast('Súbor bol úspešne stiahnutý.', 'success');
-    } catch (e) {
-      console.error('Download failed', e);
-      showToast('Nepodarilo sa stiahnuť súbor.', 'error');
-    }
-  };
-
-  const exportDataAsCsv = () => {
-    try {
-      // Define CSV headers
-      const headers = ['ID', 'Rum Name', 'Visual', 'Aroma', 'Taste', 'Overall', 'Notes'];
-      
-      // Map data to rows
-      const rows = RUM_SAMPLES.map((sample, index) => {
-        const id = index + 1;
-        const data = tastingData[id];
-        
-        if (!data) {
-          return [id, `"${sample.name}"`, '', '', '', '', '""'].join(',');
-        }
-        
-        // Escape quotes in notes
-        const safeNotes = data.notes ? `"${data.notes.replace(/"/g, '""')}"` : '""';
-        
-        return [
-          id,
-          `"${sample.name}"`,
-          data.visual,
-          data.aroma,
-          data.taste,
-          data.overall,
-          safeNotes
-        ].join(',');
-      });
-      
-      // Combine headers and rows
-      const csvContent = [headers.join(','), ...rows].join('\n');
-      
-      // Create and download blob
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `cuba-libre-tasting-data-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      showToast('Dáta boli úspešne exportované (CSV).', 'success');
-    } catch (e) {
-      console.error('CSV Export failed', e);
-      showToast('Nepodarilo sa exportovať dáta do CSV.', 'error');
     }
   };
 
@@ -600,22 +364,8 @@ export default function App() {
             </div>
 
             <footer className="mt-8 pb-5 text-center space-y-3">
-              <button className="btn-gold flex items-center justify-center gap-2" onClick={() => setActiveModal('share')}>
-                <Bookmark className="w-5 h-5" /> Uložiť môj denník
-              </button>
-              <div className="flex gap-2">
-                <button className="btn-outline flex-1 flex items-center justify-center gap-2 !mt-0 px-2" onClick={exportDataAsJson}>
-                  <FileJson className="w-4 h-4" /> JSON
-                </button>
-                <button className="btn-outline flex-1 flex items-center justify-center gap-2 !mt-0 px-2" onClick={exportDataAsHtml}>
-                  <FileDown className="w-4 h-4" /> HTML
-                </button>
-                <button className="btn-outline flex-1 flex items-center justify-center gap-2 !mt-0 px-2" onClick={exportDataAsCsv}>
-                  <FileSpreadsheet className="w-4 h-4" /> CSV
-                </button>
-              </div>
               <p className="text-xs text-text-muted opacity-60 pt-2">
-                Všetky dáta sú bezpečne uložené iba vo vašom zariadení.
+                Všetky dáta sú bezpečne uložené.
               </p>
             </footer>
           </motion.div>
@@ -635,9 +385,6 @@ export default function App() {
             }}
             onSaveImage={(url) => saveCustomImage(currentSampleId, url)}
           />
-        )}
-        {activeModal === 'share' && (
-          <ShareModal onClose={() => setActiveModal(null)} showToast={showToast} downloadHtml={exportDataAsHtml} />
         )}
         {showOnboarding && (
           <OnboardingModal onClose={completeOnboarding} />
@@ -929,57 +676,6 @@ function RatingGroup({ label, value, onChange }: { label: string; value: number;
           />
         ))}
       </div>
-    </div>
-  );
-}
-
-function ShareModal({ onClose, showToast, downloadHtml }: { onClose: () => void; showToast: (msg: string, type: ToastType) => void; downloadHtml: () => void }) {
-  const simulateAction = (msg: string) => {
-    showToast(msg, 'info');
-    onClose();
-  };
-
-  const handleDownload = () => {
-    downloadHtml();
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex justify-center items-end z-50">
-      <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="bg-bg-panel w-full max-w-md max-h-[90vh] border-t border-gold-main/40 rounded-t-2xl p-7 overflow-y-auto shadow-[0_-10px_30px_rgba(0,0,0,0.8)] text-center"
-      >
-        <Shield className="w-12 h-12 mx-auto mb-5 text-gold-main" />
-        <h2 className="text-2xl gold-text mb-4">Uložiť denník</h2>
-        <p className="text-text-muted mb-6 text-sm leading-relaxed">
-          Odnes si svoje degustačné zážitky domov. Pridaj si aplikáciu na plochu alebo stiahni zhrnutie.
-        </p>
-        
-        <button
-          className="btn-gold flex items-center justify-center gap-2 mb-4"
-          onClick={() => simulateAction('Denník bol pripravený na pridanie na plochu (PWA simulácia).')}
-        >
-          <Smartphone className="w-5 h-5" /> Pridať na plochu
-        </button>
-        
-        <button
-          className="btn-outline flex items-center justify-center gap-2 mb-4"
-          onClick={handleDownload}
-        >
-          <FileDown className="w-5 h-5" /> Stiahnuť zhrnutie (HTML)
-        </button>
-        
-        <button
-          className="w-full py-2 text-text-muted hover:text-text-main transition-colors mt-2"
-          onClick={onClose}
-        >
-          Späť
-        </button>
-      </motion.div>
     </div>
   );
 }
