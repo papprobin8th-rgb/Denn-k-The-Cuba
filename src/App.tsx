@@ -20,12 +20,12 @@ type RumSample = {
 };
 
 const RUM_SAMPLES: RumSample[] = [
-  { name: "Eminente Ambar Claro", image: "https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/EminenteAmbarClaro.png" },
-  { name: "Eminente Carta Oro", image: "https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/EminenteCartaOro.png" },
-  { name: "Eminente Reserva 7YO", image: "https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/Eminente%207.png" },
-  { name: "Eminente Gran Reserva 10YO No. 1", image: "https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/EminenteGranreserva.png" },
-  { name: "Eminente Grand Reserva 10YO No.2", image: "https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/Eminenteno2.png" },
-  { name: "Eminente Signatura Cocodrilo 14YO", image: "https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/EminenteCocodrilo.png" }
+  { name: "Eminente Ambar Claro", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteAmbarClaro.png" },
+  { name: "Eminente Carta Oro", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteCartaOro.png" },
+  { name: "Eminente Reserva 7YO", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminente%207.png" },
+  { name: "Eminente Gran Reserva 10YO No. 1", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteGranreserva.png" },
+  { name: "Eminente Grand Reserva 10YO No.2", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminenteno2.png" },
+  { name: "Eminente Signatura Cocodrilo 14YO", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteCocodrilo.png" }
 ];
 
 const TOTAL_SAMPLES = RUM_SAMPLES.length;
@@ -240,7 +240,7 @@ export default function App() {
                 className="mb-6"
               >
                 <img 
-                  src="https://cdn.jsdelivr.net/gh/papprobin8th-rgb/Denn-k-The-Cuba@main/public/Logocuba.jpg" 
+                  src="https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg" 
                   alt="The Cuba Libre Logo" 
                   className="w-32 h-32 object-cover rounded-full border-2 border-gold-main/30 shadow-[0_0_15px_rgba(212,175,55,0.3)]"
                   referrerPolicy="no-referrer"
