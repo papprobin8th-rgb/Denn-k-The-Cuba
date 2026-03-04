@@ -255,9 +255,18 @@ export default function App() {
             <p className="text-text-muted mb-10 text-base leading-relaxed">
               Vitajte na vašej ceste svetom exkluzívnych rumov. Zaznamenajte si svoje dojmy a chute.
             </p>
-            <button className="btn-gold" onClick={() => setCurrentScreen('dashboard')}>
-              Začať degustáciu
-            </button>
+            <motion.button 
+              className="btn-gold text-lg px-8 py-4 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.4)] hover:shadow-[0_0_30px_rgba(212,175,55,0.6)] w-full max-w-[280px]" 
+              onClick={() => setCurrentScreen('dashboard')}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              animate={{ 
+                boxShadow: ['0px 0px 15px rgba(212,175,55,0.3)', '0px 0px 30px rgba(212,175,55,0.6)', '0px 0px 15px rgba(212,175,55,0.3)'] 
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              Začať degustáciu <ChevronRight className="w-6 h-6" />
+            </motion.button>
           </motion.div>
         ) : (
           <motion.div
@@ -291,83 +300,102 @@ export default function App() {
               </div>
             </header>
 
-            <div className="flex flex-col gap-4 flex-1 content-start">
-              {RUM_SAMPLES.map((sample, index) => {
-                const id = index + 1;
-                const isRated = !!tastingData[id];
-                const rating = tastingData[id];
-                const isSelected = currentSampleId === id;
-                const imageUrl = customImages[id] || sample.image;
-                
-                return (
-                  <motion.div
-                    key={id}
-                    onClick={() => openRatingModal(id)}
-                    whileTap={{ scale: 0.98 }}
-                    animate={{ 
-                      scale: isSelected ? 1.02 : 1,
-                      borderColor: isSelected ? '#D4AF37' : 'rgba(255, 255, 255, 0.05)'
-                    }}
-                    className={`
-                      border rounded-xl p-4 shadow-lg cursor-pointer relative flex items-center gap-4
-                      active:bg-bg-panel-light transition-all duration-300 overflow-hidden group
-                      ${isRated 
-                        ? `bg-gradient-to-r ${rating.overall >= 4.5 ? 'from-bg-panel to-gold-main/20' : rating.overall >= 3.5 ? 'from-bg-panel to-gold-main/10' : 'from-bg-panel to-gold-main/5'}` 
-                        : 'bg-bg-panel'}
-                      ${isSelected 
-                        ? 'shadow-[0_0_20px_rgba(212,175,55,0.2)]' 
-                        : 'hover:border-gold-main/40'}
-                    `}
-                  >
-                    <div className={`
-                      w-12 h-16 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-black/20
-                      ${isRated ? 'border border-gold-main/30' : 'border border-white/5'}
-                    `}>
-                      <img 
-                        src={imageUrl} 
-                        alt={sample.name} 
-                        className="w-full h-full object-cover opacity-90"
-                        referrerPolicy="no-referrer"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = `https://placehold.co/100x200/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
+            {isLoadingUser ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full border-2 border-gold-main/30 border-t-gold-main animate-spin"></div>
+              </div>
+            ) : user ? (
+              <>
+                <div className="flex flex-col gap-4 flex-1 content-start">
+                  {RUM_SAMPLES.map((sample, index) => {
+                    const id = index + 1;
+                    const isRated = !!tastingData[id];
+                    const rating = tastingData[id];
+                    const isSelected = currentSampleId === id;
+                    const imageUrl = customImages[id] || sample.image;
+                    
+                    return (
+                      <motion.div
+                        key={id}
+                        onClick={() => openRatingModal(id)}
+                        whileTap={{ scale: 0.98 }}
+                        animate={{ 
+                          scale: isSelected ? 1.02 : 1,
+                          borderColor: isSelected ? '#D4AF37' : 'rgba(255, 255, 255, 0.05)'
                         }}
-                      />
-                    </div>
-
-                    <div className="flex-1 min-w-0 text-left">
-                      <h3 className={`font-body font-medium text-base truncate ${isRated ? 'text-gold-light' : 'text-text-main'}`}>
-                        {sample.name}
-                      </h3>
-                      {isRated ? (
-                        <div className="flex items-center gap-1 mt-1">
-                          <Star className="w-3 h-3 text-gold-main fill-gold-main" />
-                          <span className="text-xs text-gold-main font-mono">{rating.overall}/5</span>
-                          <span className="text-xs text-text-muted ml-2 truncate max-w-[150px] italic">
-                            {rating.notes ? `"${rating.notes}"` : 'Hodnotené'}
-                          </span>
+                        className={`
+                          border rounded-xl p-4 shadow-lg cursor-pointer relative flex items-center gap-4
+                          active:bg-bg-panel-light transition-all duration-300 overflow-hidden group
+                          ${isRated 
+                            ? `bg-gradient-to-r ${rating.overall >= 4.5 ? 'from-bg-panel to-gold-main/20' : rating.overall >= 3.5 ? 'from-bg-panel to-gold-main/10' : 'from-bg-panel to-gold-main/5'}` 
+                            : 'bg-bg-panel'}
+                          ${isSelected 
+                            ? 'shadow-[0_0_20px_rgba(212,175,55,0.2)]' 
+                            : 'hover:border-gold-main/40'}
+                        `}
+                      >
+                        <div className={`
+                          w-12 h-16 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-black/20
+                          ${isRated ? 'border border-gold-main/30' : 'border border-white/5'}
+                        `}>
+                          <img 
+                            src={imageUrl} 
+                            alt={sample.name} 
+                            className="w-full h-full object-cover opacity-90"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = `https://placehold.co/100x200/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
+                            }}
+                          />
                         </div>
-                      ) : (
-                        <p className="text-xs text-text-muted mt-1">Klepnite pre hodnotenie</p>
-                      )}
-                    </div>
 
-                    <div className="shrink-0">
-                      {isRated ? (
-                         <CheckCircle className="w-6 h-6 text-gold-main drop-shadow-[0_0_5px_rgba(212,175,55,0.5)]" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-gold-main transition-colors" />
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <h3 className={`font-body font-medium text-base truncate ${isRated ? 'text-gold-light' : 'text-text-main'}`}>
+                            {sample.name}
+                          </h3>
+                          {isRated ? (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Star className="w-3 h-3 text-gold-main fill-gold-main" />
+                              <span className="text-xs text-gold-main font-mono">{rating.overall}/5</span>
+                              <span className="text-xs text-text-muted ml-2 truncate max-w-[150px] italic">
+                                {rating.notes ? `"${rating.notes}"` : 'Hodnotené'}
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-text-muted mt-1">Klepnite pre hodnotenie</p>
+                          )}
+                        </div>
 
-            <footer className="mt-8 pb-5 text-center space-y-3">
-              <p className="text-xs text-text-muted opacity-60 pt-2">
-                Všetky dáta sú bezpečne uložené.
-              </p>
-            </footer>
+                        <div className="shrink-0">
+                          {isRated ? (
+                             <CheckCircle className="w-6 h-6 text-gold-main drop-shadow-[0_0_5px_rgba(212,175,55,0.5)]" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-gold-main transition-colors" />
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                <footer className="mt-8 pb-5 text-center space-y-3">
+                  <p className="text-xs text-text-muted opacity-60 pt-2">
+                    Všetky dáta sú bezpečne uložené.
+                  </p>
+                </footer>
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-4 pb-10">
+                <Shield className="w-16 h-16 text-gold-main/20 mb-6" />
+                <h3 className="text-xl gold-text mb-3">Prihlásenie nutné</h3>
+                <p className="text-text-muted mb-8">
+                  Pre zobrazenie vzoriek rumov a ukladanie vašich hodnotení sa prosím prihláste.
+                </p>
+                <button className="btn-gold flex items-center justify-center gap-2" onClick={handleLogin}>
+                  <LogIn className="w-5 h-5" /> Prihlásiť sa
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
