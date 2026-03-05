@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, ChevronRight, AlertCircle, Check, Image, Edit2, Camera, LogIn, LogOut, Plus, ArrowLeft } from 'lucide-react';
+import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, ChevronRight, AlertCircle, Check, Image, Edit2, Camera, LogIn, LogOut, Plus, ArrowLeft, BarChart2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc } from './lib/firebase';
 import { User } from 'firebase/auth';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
 type RatingData = {
   visual: number;
@@ -111,7 +112,7 @@ export default function App() {
       }
     } catch (e) {
       console.error('Failed to load from Firestore', e);
-      showToast('Nepodarilo sa načítať dáta z cloudu.', 'error');
+      showToast('Nepodarilo sa načítať dáta z cloudu. Používam lokálne dáta.', 'error');
       loadLocalData();
     }
   };
@@ -247,6 +248,17 @@ export default function App() {
     setCurrentSampleId(id);
     setActiveModal('rating');
   };
+
+  const currentTastingSamples = samples.filter(s => s.tastingId === selectedTastingId);
+  const ratedSamples = currentTastingSamples.filter(s => tastingData[s.id]);
+  const hasRatings = ratedSamples.length > 0;
+
+  const avgData = hasRatings ? [
+    { subject: 'Vizuál', A: Number((ratedSamples.reduce((sum, s) => sum + tastingData[s.id].visual, 0) / ratedSamples.length).toFixed(1)), fullMark: 5 },
+    { subject: 'Vôňa', A: Number((ratedSamples.reduce((sum, s) => sum + tastingData[s.id].aroma, 0) / ratedSamples.length).toFixed(1)), fullMark: 5 },
+    { subject: 'Chuť', A: Number((ratedSamples.reduce((sum, s) => sum + tastingData[s.id].taste, 0) / ratedSamples.length).toFixed(1)), fullMark: 5 },
+    { subject: 'Celkovo', A: Number((ratedSamples.reduce((sum, s) => sum + tastingData[s.id].overall, 0) / ratedSamples.length).toFixed(1)), fullMark: 5 },
+  ] : [];
 
   return (
     <div className="min-h-screen flex flex-col w-full max-w-md mx-auto relative">
@@ -498,6 +510,41 @@ export default function App() {
               >
                 <Plus className="w-5 h-5" /> Pridať vzorku
               </button>
+
+              {hasRatings && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-8 border border-white/5 rounded-xl p-5 shadow-lg bg-bg-panel"
+                >
+                  <div className="flex items-center gap-2 mb-4">
+                    <BarChart2 className="w-5 h-5 text-gold-main" />
+                    <h3 className="text-lg gold-text">Profil degustácie</h3>
+                  </div>
+                  <p className="text-xs text-text-muted mb-4">Priemerné hodnotenie vzoriek v tejto degustácii.</p>
+                  
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={avgData}>
+                        <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#888888', fontSize: 12 }} />
+                        <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fill: 'rgba(212,175,55,0.5)', fontSize: 10 }} />
+                        <Radar
+                          name="Priemer"
+                          dataKey="A"
+                          stroke="#D4AF37"
+                          fill="#D4AF37"
+                          fillOpacity={0.3}
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#141414', borderColor: 'rgba(212,175,55,0.3)', borderRadius: '8px' }}
+                          itemStyle={{ color: '#D4AF37' }}
+                        />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </motion.div>
+              )}
             </div>
           </motion.div>
         )}
