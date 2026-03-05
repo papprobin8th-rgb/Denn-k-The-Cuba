@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, ChevronRight, AlertCircle, Check, Image, Edit2, Camera, LogIn, LogOut } from 'lucide-react';
+import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, ChevronRight, AlertCircle, Check, Image, Edit2, Camera, LogIn, LogOut, Plus, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc } from './lib/firebase';
 import { User } from 'firebase/auth';
@@ -14,28 +14,44 @@ type RatingData = {
 
 type ToastType = 'success' | 'error' | 'info';
 
+type TastingEvent = {
+  id: string;
+  name: string;
+  createdAt: number;
+};
+
 type RumSample = {
+  id: string;
+  tastingId: string;
   name: string;
   image: string;
 };
 
-const RUM_SAMPLES: RumSample[] = [
-  { name: "Eminente Ambar Claro", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteAmbarClaro.png" },
-  { name: "Eminente Carta Oro", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteCartaOro.png" },
-  { name: "Eminente Reserva 7YO", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminente%207.png" },
-  { name: "Eminente Gran Reserva 10YO No. 1", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteGranreserva.png" },
-  { name: "Eminente Grand Reserva 10YO No.2", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminenteno2.png" },
-  { name: "Eminente Signatura Cocodrilo 14YO", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteCocodrilo.png" }
+const DEFAULT_TASTINGS: TastingEvent[] = [
+  { id: 'tasting-eminente', name: 'Eminente', createdAt: 0 }
 ];
 
-const TOTAL_SAMPLES = RUM_SAMPLES.length;
+const DEFAULT_SAMPLES: RumSample[] = [
+  { id: '1', tastingId: 'tasting-eminente', name: "Eminente Ambar Claro", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteAmbarClaro.png" },
+  { id: '2', tastingId: 'tasting-eminente', name: "Eminente Carta Oro", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteCartaOro.png" },
+  { id: '3', tastingId: 'tasting-eminente', name: "Eminente Reserva 7YO", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminente%207.png" },
+  { id: '4', tastingId: 'tasting-eminente', name: "Eminente Gran Reserva 10YO No. 1", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteGranreserva.png" },
+  { id: '5', tastingId: 'tasting-eminente', name: "Eminente Grand Reserva 10YO No.2", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminenteno2.png" },
+  { id: '6', tastingId: 'tasting-eminente', name: "Eminente Signatura Cocodrilo 14YO", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteCocodrilo.png" }
+];
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<'splash' | 'dashboard'>('splash');
-  const [tastingData, setTastingData] = useState<Record<number, RatingData>>({});
-  const [customImages, setCustomImages] = useState<Record<number, string>>({});
-  const [activeModal, setActiveModal] = useState<'rating' | null>(null);
-  const [currentSampleId, setCurrentSampleId] = useState<number | null>(null);
+  const [currentScreen, setCurrentScreen] = useState<'splash' | 'dashboard' | 'tasting'>('splash');
+  const [selectedTastingId, setSelectedTastingId] = useState<string | null>(null);
+  
+  const [tastings, setTastings] = useState<TastingEvent[]>(DEFAULT_TASTINGS);
+  const [samples, setSamples] = useState<RumSample[]>(DEFAULT_SAMPLES);
+  
+  const [tastingData, setTastingData] = useState<Record<string, RatingData>>({});
+  const [customImages, setCustomImages] = useState<Record<string, string>>({});
+  
+  const [activeModal, setActiveModal] = useState<'rating' | 'addTasting' | 'addSample' | null>(null);
+  const [currentSampleId, setCurrentSampleId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -48,26 +64,21 @@ export default function App() {
   };
 
   const loadLocalData = () => {
-    const saved = localStorage.getItem('cubaLibreDiary');
-    if (saved) {
-      try {
-        setTastingData(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse tasting data', e);
-      }
-    } else {
-      setTastingData({});
+    const savedDiary = localStorage.getItem('cubaLibreDiary');
+    if (savedDiary) {
+      try { setTastingData(JSON.parse(savedDiary)); } catch (e) {}
     }
-
     const savedImages = localStorage.getItem('cubaLibreImages');
     if (savedImages) {
-      try {
-        setCustomImages(JSON.parse(savedImages));
-      } catch (e) {
-        console.error('Failed to parse images', e);
-      }
-    } else {
-      setCustomImages({});
+      try { setCustomImages(JSON.parse(savedImages)); } catch (e) {}
+    }
+    const savedTastings = localStorage.getItem('cubaLibreTastings');
+    if (savedTastings) {
+      try { setTastings(JSON.parse(savedTastings)); } catch (e) {}
+    }
+    const savedSamples = localStorage.getItem('cubaLibreSamples');
+    if (savedSamples) {
+      try { setSamples(JSON.parse(savedSamples)); } catch (e) {}
     }
   };
 
@@ -86,13 +97,17 @@ export default function App() {
           setCustomImages(data.customImages);
           localStorage.setItem('cubaLibreImages', JSON.stringify(data.customImages));
         }
+        if (data.tastings) {
+          setTastings(data.tastings);
+          localStorage.setItem('cubaLibreTastings', JSON.stringify(data.tastings));
+        }
+        if (data.samples) {
+          setSamples(data.samples);
+          localStorage.setItem('cubaLibreSamples', JSON.stringify(data.samples));
+        }
       } else {
         // No remote data, sync local data up
-        const localTasting = JSON.parse(localStorage.getItem('cubaLibreDiary') || '{}');
-        const localImages = JSON.parse(localStorage.getItem('cubaLibreImages') || '{}');
-        if (Object.keys(localTasting).length > 0 || Object.keys(localImages).length > 0) {
-          await syncToFirestore(localTasting, localImages, uid);
-        }
+        await syncToFirestore(tastingData, customImages, tastings, samples, uid);
       }
     } catch (e) {
       console.error('Failed to load from Firestore', e);
@@ -145,17 +160,26 @@ export default function App() {
     try {
       await signOut(auth);
       showToast('Odhlásenie úspešné.', 'info');
+      setCurrentScreen('splash');
     } catch (error) {
       console.error('Logout failed', error);
     }
   };
 
-  const syncToFirestore = async (newTastingData: Record<number, RatingData>, newCustomImages: Record<number, string>, uid: string = user?.uid || '') => {
+  const syncToFirestore = async (
+    newTastingData: Record<string, RatingData>, 
+    newCustomImages: Record<string, string>, 
+    newTastings: TastingEvent[],
+    newSamples: RumSample[],
+    uid: string = user?.uid || ''
+  ) => {
     if (!uid || !db) return;
     try {
       await setDoc(doc(db, 'users', uid), {
         tastingData: newTastingData,
         customImages: newCustomImages,
+        tastings: newTastings,
+        samples: newSamples,
         updatedAt: new Date().toISOString()
       }, { merge: true });
     } catch (e) {
@@ -168,24 +192,24 @@ export default function App() {
     localStorage.setItem('onboardingComplete', 'true');
   };
 
-  const saveTastingData = (data: Record<number, RatingData>) => {
+  const saveTastingData = (data: Record<string, RatingData>) => {
     try {
       setTastingData(data);
       localStorage.setItem('cubaLibreDiary', JSON.stringify(data));
-      if (user) syncToFirestore(data, customImages);
+      if (user) syncToFirestore(data, customImages, tastings, samples);
       showToast('Hodnotenie bolo uložené.', 'success');
     } catch (e) {
       console.error('Failed to save data', e);
-      showToast('Chyba pri ukladaní dát. Skontrolujte miesto v úložisku.', 'error');
+      showToast('Chyba pri ukladaní dát.', 'error');
     }
   };
 
-  const saveCustomImage = (id: number, url: string) => {
+  const saveCustomImage = (id: string, url: string) => {
     try {
       const newImages = { ...customImages, [id]: url };
       setCustomImages(newImages);
       localStorage.setItem('cubaLibreImages', JSON.stringify(newImages));
-      if (user) syncToFirestore(tastingData, newImages);
+      if (user) syncToFirestore(tastingData, newImages, tastings, samples);
       showToast('Obrázok bol aktualizovaný.', 'success');
     } catch (e) {
       console.error('Failed to save image', e);
@@ -193,7 +217,33 @@ export default function App() {
     }
   };
 
-  const openRatingModal = (id: number) => {
+  const handleAddTasting = (name: string) => {
+    const newTasting: TastingEvent = { id: `tasting-${Date.now()}`, name, createdAt: Date.now() };
+    const newTastings = [...tastings, newTasting];
+    setTastings(newTastings);
+    localStorage.setItem('cubaLibreTastings', JSON.stringify(newTastings));
+    if (user) syncToFirestore(tastingData, customImages, newTastings, samples);
+    setActiveModal(null);
+    showToast('Degustácia pridaná.', 'success');
+  };
+
+  const handleAddSample = (name: string) => {
+    if (!selectedTastingId) return;
+    const newSample: RumSample = { 
+      id: `sample-${Date.now()}`, 
+      tastingId: selectedTastingId, 
+      name, 
+      image: `https://placehold.co/400x600/141414/D4AF37?text=${encodeURIComponent(name.split(' ').join('\n'))}` 
+    };
+    const newSamples = [...samples, newSample];
+    setSamples(newSamples);
+    localStorage.setItem('cubaLibreSamples', JSON.stringify(newSamples));
+    if (user) syncToFirestore(tastingData, customImages, tastings, newSamples);
+    setActiveModal(null);
+    showToast('Vzorka pridaná.', 'success');
+  };
+
+  const openRatingModal = (id: string) => {
     setCurrentSampleId(id);
     setActiveModal('rating');
   };
@@ -232,11 +282,7 @@ export default function App() {
             <div className="mb-8 flex flex-col items-center">
               <motion.div
                 animate={{ y: [0, -10, 0] }}
-                transition={{ 
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 className="mb-6"
               >
                 <img 
@@ -260,15 +306,13 @@ export default function App() {
               onClick={() => setCurrentScreen('dashboard')}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              animate={{ 
-                boxShadow: ['0px 0px 15px rgba(212,175,55,0.3)', '0px 0px 30px rgba(212,175,55,0.6)', '0px 0px 15px rgba(212,175,55,0.3)'] 
-              }}
+              animate={{ boxShadow: ['0px 0px 15px rgba(212,175,55,0.3)', '0px 0px 30px rgba(212,175,55,0.6)', '0px 0px 15px rgba(212,175,55,0.3)'] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
               Začať degustáciu <ChevronRight className="w-6 h-6" />
             </motion.button>
           </motion.div>
-        ) : (
+        ) : currentScreen === 'dashboard' ? (
           <motion.div
             key="dashboard"
             initial={{ opacity: 0, y: 10 }}
@@ -277,7 +321,7 @@ export default function App() {
           >
             <header className="text-center py-5 pb-7 border-b border-white/5 mb-8 relative">
               <h2 className="text-2xl tracking-wide gold-text">Degustačný Denník</h2>
-              <p className="text-text-muted text-sm mt-2">Zoznam vzoriek</p>
+              <p className="text-text-muted text-sm mt-2">Vaše degustácie</p>
               
               <div className="absolute top-5 right-0">
                 {isLoadingUser ? (
@@ -307,75 +351,37 @@ export default function App() {
             ) : user ? (
               <>
                 <div className="flex flex-col gap-4 flex-1 content-start">
-                  {RUM_SAMPLES.map((sample, index) => {
-                    const id = index + 1;
-                    const isRated = !!tastingData[id];
-                    const rating = tastingData[id];
-                    const isSelected = currentSampleId === id;
-                    const imageUrl = customImages[id] || sample.image;
+                  {tastings.map((tasting) => {
+                    const tastingSamples = samples.filter(s => s.tastingId === tasting.id);
+                    const ratedCount = tastingSamples.filter(s => tastingData[s.id]).length;
                     
                     return (
                       <motion.div
-                        key={id}
-                        onClick={() => openRatingModal(id)}
+                        key={tasting.id}
+                        onClick={() => { setSelectedTastingId(tasting.id); setCurrentScreen('tasting'); }}
                         whileTap={{ scale: 0.98 }}
-                        animate={{ 
-                          scale: isSelected ? 1.02 : 1,
-                          borderColor: isSelected ? '#D4AF37' : 'rgba(255, 255, 255, 0.05)'
-                        }}
-                        className={`
-                          border rounded-xl p-4 shadow-lg cursor-pointer relative flex items-center gap-4
-                          active:bg-bg-panel-light transition-all duration-300 overflow-hidden group
-                          ${isRated 
-                            ? `bg-gradient-to-r ${rating.overall >= 4.5 ? 'from-bg-panel to-gold-main/20' : rating.overall >= 3.5 ? 'from-bg-panel to-gold-main/10' : 'from-bg-panel to-gold-main/5'}` 
-                            : 'bg-bg-panel'}
-                          ${isSelected 
-                            ? 'shadow-[0_0_20px_rgba(212,175,55,0.2)]' 
-                            : 'hover:border-gold-main/40'}
-                        `}
+                        className="border border-white/5 rounded-xl p-5 shadow-lg cursor-pointer bg-bg-panel hover:border-gold-main/40 transition-all group relative overflow-hidden"
                       >
-                        <div className={`
-                          w-12 h-16 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-black/20
-                          ${isRated ? 'border border-gold-main/30' : 'border border-white/5'}
-                        `}>
-                          <img 
-                            src={imageUrl} 
-                            alt={sample.name} 
-                            className="w-full h-full object-cover opacity-90"
-                            referrerPolicy="no-referrer"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = `https://placehold.co/100x200/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
-                            }}
-                          />
-                        </div>
-
-                        <div className="flex-1 min-w-0 text-left">
-                          <h3 className={`font-body font-medium text-base truncate ${isRated ? 'text-gold-light' : 'text-text-main'}`}>
-                            {sample.name}
-                          </h3>
-                          {isRated ? (
-                            <div className="flex items-center gap-1 mt-1">
-                              <Star className="w-3 h-3 text-gold-main fill-gold-main" />
-                              <span className="text-xs text-gold-main font-mono">{rating.overall}/5</span>
-                              <span className="text-xs text-text-muted ml-2 truncate max-w-[150px] italic">
-                                {rating.notes ? `"${rating.notes}"` : 'Hodnotené'}
-                              </span>
-                            </div>
-                          ) : (
-                            <p className="text-xs text-text-muted mt-1">Klepnite pre hodnotenie</p>
-                          )}
-                        </div>
-
-                        <div className="shrink-0">
-                          {isRated ? (
-                             <CheckCircle className="w-6 h-6 text-gold-main drop-shadow-[0_0_5px_rgba(212,175,55,0.5)]" />
-                          ) : (
-                            <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-gold-main transition-colors" />
-                          )}
+                        <div className="absolute top-0 left-0 w-1 h-full bg-gold-main/50 group-hover:bg-gold-main transition-colors"></div>
+                        <div className="flex justify-between items-center pl-2">
+                          <div>
+                            <h3 className="font-body font-medium text-lg text-gold-light mb-1">{tasting.name}</h3>
+                            <p className="text-sm text-text-muted flex items-center gap-2">
+                              <Wine className="w-4 h-4" /> {ratedCount} / {tastingSamples.length} ohodnotených
+                            </p>
+                          </div>
+                          <ChevronRight className="w-6 h-6 text-text-muted group-hover:text-gold-main transition-colors" />
                         </div>
                       </motion.div>
                     );
                   })}
+
+                  <button 
+                    onClick={() => setActiveModal('addTasting')} 
+                    className="mt-4 border border-dashed border-gold-main/40 rounded-xl p-4 text-gold-main flex items-center justify-center gap-2 hover:bg-gold-main/5 transition-colors"
+                  >
+                    <Plus className="w-5 h-5" /> Pridať degustáciu
+                  </button>
                 </div>
 
                 <footer className="mt-8 pb-5 text-center space-y-3">
@@ -397,13 +403,110 @@ export default function App() {
               </div>
             )}
           </motion.div>
+        ) : (
+          <motion.div
+            key="tasting"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex-1 flex flex-col p-5"
+          >
+            <header className="text-center py-5 pb-7 border-b border-white/5 mb-8 relative">
+              <button 
+                onClick={() => setCurrentScreen('dashboard')} 
+                className="absolute left-0 top-5 text-text-muted hover:text-gold-main flex items-center gap-1 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" /> Späť
+              </button>
+              <h2 className="text-2xl tracking-wide gold-text">{tastings.find(t => t.id === selectedTastingId)?.name}</h2>
+              <p className="text-text-muted text-sm mt-2">Zoznam vzoriek</p>
+            </header>
+
+            <div className="flex flex-col gap-4 flex-1 content-start">
+              {samples.filter(s => s.tastingId === selectedTastingId).map((sample) => {
+                const id = sample.id;
+                const isRated = !!tastingData[id];
+                const rating = tastingData[id];
+                const isSelected = currentSampleId === id;
+                const imageUrl = customImages[id] || sample.image;
+                
+                return (
+                  <motion.div
+                    key={id}
+                    onClick={() => openRatingModal(id)}
+                    whileTap={{ scale: 0.98 }}
+                    animate={{ 
+                      scale: isSelected ? 1.02 : 1,
+                      borderColor: isSelected ? '#D4AF37' : 'rgba(255, 255, 255, 0.05)'
+                    }}
+                    className={`
+                      border rounded-xl p-4 shadow-lg cursor-pointer relative flex items-center gap-4
+                      active:bg-bg-panel-light transition-all duration-300 overflow-hidden group
+                      ${isRated 
+                        ? `bg-gradient-to-r ${rating.overall >= 4.5 ? 'from-bg-panel to-gold-main/20' : rating.overall >= 3.5 ? 'from-bg-panel to-gold-main/10' : 'from-bg-panel to-gold-main/5'}` 
+                        : 'bg-bg-panel'}
+                      ${isSelected 
+                        ? 'shadow-[0_0_20px_rgba(212,175,55,0.2)]' 
+                        : 'hover:border-gold-main/40'}
+                    `}
+                  >
+                    <div className={`
+                      w-12 h-16 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-black/20
+                      ${isRated ? 'border border-gold-main/30' : 'border border-white/5'}
+                    `}>
+                      <img 
+                        src={imageUrl} 
+                        alt={sample.name} 
+                        className="w-full h-full object-cover opacity-90"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `https://placehold.co/100x200/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex-1 min-w-0 text-left">
+                      <h3 className={`font-body font-medium text-base truncate ${isRated ? 'text-gold-light' : 'text-text-main'}`}>
+                        {sample.name}
+                      </h3>
+                      {isRated ? (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Star className="w-3 h-3 text-gold-main fill-gold-main" />
+                          <span className="text-xs text-gold-main font-mono">{rating.overall}/5</span>
+                          <span className="text-xs text-text-muted ml-2 truncate max-w-[150px] italic">
+                            {rating.notes ? `"${rating.notes}"` : 'Hodnotené'}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-text-muted mt-1">Klepnite pre hodnotenie</p>
+                      )}
+                    </div>
+
+                    <div className="shrink-0">
+                      {isRated ? (
+                         <CheckCircle className="w-6 h-6 text-gold-main drop-shadow-[0_0_5px_rgba(212,175,55,0.5)]" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-gold-main transition-colors" />
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+
+              <button 
+                onClick={() => setActiveModal('addSample')} 
+                className="mt-4 border border-dashed border-gold-main/40 rounded-xl p-4 text-gold-main flex items-center justify-center gap-2 hover:bg-gold-main/5 transition-colors"
+              >
+                <Plus className="w-5 h-5" /> Pridať vzorku
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {activeModal === 'rating' && currentSampleId && (
           <RatingModal
-            sampleId={currentSampleId}
+            sample={samples.find(s => s.id === currentSampleId)!}
             initialData={tastingData[currentSampleId]}
             customImage={customImages[currentSampleId]}
             onClose={() => setActiveModal(null)}
@@ -414,10 +517,49 @@ export default function App() {
             onSaveImage={(url) => saveCustomImage(currentSampleId, url)}
           />
         )}
+        {activeModal === 'addTasting' && (
+          <InputModal 
+            title="Nová degustácia" 
+            placeholder="Názov degustácie (napr. Zacapa)" 
+            onClose={() => setActiveModal(null)} 
+            onSave={handleAddTasting} 
+          />
+        )}
+        {activeModal === 'addSample' && (
+          <InputModal 
+            title="Nová vzorka" 
+            placeholder="Názov vzorky" 
+            onClose={() => setActiveModal(null)} 
+            onSave={handleAddSample} 
+          />
+        )}
         {showOnboarding && (
           <OnboardingModal onClose={completeOnboarding} />
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function InputModal({ title, placeholder, onClose, onSave }: { title: string, placeholder: string, onClose: () => void, onSave: (val: string) => void }) {
+  const [val, setVal] = useState('');
+  return (
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex justify-center items-center z-50 p-5">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-bg-panel w-full max-w-sm border border-gold-main/40 rounded-2xl p-6 shadow-2xl">
+        <h3 className="text-xl gold-text mb-4">{title}</h3>
+        <input 
+          autoFocus 
+          type="text" 
+          value={val} 
+          onChange={e => setVal(e.target.value)} 
+          placeholder={placeholder} 
+          className="w-full bg-bg-dark border border-gold-main/40 rounded px-4 py-3 text-text-main focus:outline-none focus:border-gold-main mb-6" 
+        />
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2 text-text-muted hover:text-text-main transition-colors">Zrušiť</button>
+          <button onClick={() => { if(val.trim()) onSave(val.trim()); }} className="flex-1 btn-gold py-2 rounded">Uložiť</button>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -504,14 +646,14 @@ function OnboardingModal({ onClose }: { onClose: () => void }) {
 }
 
 function RatingModal({
-  sampleId,
+  sample,
   initialData,
   customImage,
   onClose,
   onSave,
   onSaveImage,
 }: {
-  sampleId: number;
+  sample: RumSample;
   initialData?: RatingData;
   customImage?: string;
   onClose: () => void;
@@ -522,7 +664,7 @@ function RatingModal({
     initialData || { visual: 0, aroma: 0, taste: 0, overall: 0, notes: '' }
   );
   const [isEditingImage, setIsEditingImage] = useState(false);
-  const [imageUrl, setImageUrl] = useState(customImage || RUM_SAMPLES[sampleId - 1].image);
+  const [imageUrl, setImageUrl] = useState(customImage || sample.image);
 
   const updateRating = (category: keyof Omit<RatingData, 'notes'>, value: number) => {
     setRating((prev) => ({ ...prev, [category]: value }));
@@ -585,7 +727,7 @@ function RatingModal({
         className="bg-bg-panel w-full max-w-md max-h-[90vh] border-t border-gold-main/40 rounded-t-2xl p-7 overflow-y-auto shadow-[0_-10px_30px_rgba(0,0,0,0.8)]"
       >
         <div className="flex justify-between items-center mb-6 border-b border-gold-main/20 pb-4">
-          <h2 className="text-xl gold-text leading-tight">{RUM_SAMPLES[sampleId - 1].name}</h2>
+          <h2 className="text-xl gold-text leading-tight">{sample.name}</h2>
           <button onClick={onClose} className="text-text-muted hover:text-text-main transition-colors ml-4">
             <X className="w-6 h-6" />
           </button>
@@ -646,11 +788,11 @@ function RatingModal({
           <div className="w-full h-48 rounded-lg overflow-hidden border border-white/10 relative group">
             <img 
               src={imageUrl} 
-              alt={RUM_SAMPLES[sampleId - 1].name} 
+              alt={sample.name} 
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = `https://placehold.co/600x400/141414/D4AF37?text=${encodeURIComponent(RUM_SAMPLES[sampleId - 1].name.split(' ').join('\n'))}`;
+                (e.target as HTMLImageElement).src = `https://placehold.co/600x400/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
               }}
             />
           </div>
