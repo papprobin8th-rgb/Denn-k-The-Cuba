@@ -33,12 +33,12 @@ const DEFAULT_TASTINGS: TastingEvent[] = [
 ];
 
 const DEFAULT_SAMPLES: RumSample[] = [
-  { id: '1', tastingId: 'tasting-eminente', name: "Eminente Ambar Claro", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteAmbarClaro.png" },
-  { id: '2', tastingId: 'tasting-eminente', name: "Eminente Carta Oro", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteCartaOro.png" },
-  { id: '3', tastingId: 'tasting-eminente', name: "Eminente Reserva 7YO", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminente%207.png" },
-  { id: '4', tastingId: 'tasting-eminente', name: "Eminente Gran Reserva 10YO No. 1", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteGranreserva.png" },
-  { id: '5', tastingId: 'tasting-eminente', name: "Eminente Grand Reserva 10YO No.2", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Eminenteno2.png" },
-  { id: '6', tastingId: 'tasting-eminente', name: "Eminente Signatura Cocodrilo 14YO", image: "https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/EminenteCocodrilo.png" }
+  { id: '1', tastingId: 'tasting-eminente', name: "Eminente Ambar Claro", image: "/EminenteAmbarClaro.png" },
+  { id: '2', tastingId: 'tasting-eminente', name: "Eminente Carta Oro", image: "/EminenteCartaOro.png" },
+  { id: '3', tastingId: 'tasting-eminente', name: "Eminente Reserva 7YO", image: "/Eminente%207.png" },
+  { id: '4', tastingId: 'tasting-eminente', name: "Eminente Gran Reserva 10YO No. 1", image: "/EminenteGranreserva.png" },
+  { id: '5', tastingId: 'tasting-eminente', name: "Eminente Grand Reserva 10YO No.2", image: "/Eminenteno2.png" },
+  { id: '6', tastingId: 'tasting-eminente', name: "Eminente Signatura Cocodrilo 14YO", image: "/EminenteCocodrilo.png" }
 ];
 
 export default function App() {
@@ -298,7 +298,7 @@ export default function App() {
                 className="mb-6"
               >
                 <img 
-                  src="https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg" 
+                  src="/Logocuba.jpg" 
                   alt="The Cuba Libre Logo" 
                   className="w-32 h-32 object-cover rounded-full border-2 border-gold-main/30 shadow-[0_0_15px_rgba(212,175,55,0.3)]"
                   referrerPolicy="no-referrer"
