@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, ChevronRight, AlertCircle, Check, Image, Edit2, Camera, LogIn, LogOut, Plus, ArrowLeft, BarChart2 } from 'lucide-react';
+import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, ChevronRight, AlertCircle, Check, Image, Edit2, Camera, LogIn, LogOut, Plus, ArrowLeft, BarChart2, User as UserIcon, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc, onSnapshot } from './lib/firebase';
+import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, updateProfile, doc, setDoc, getDoc, onSnapshot } from './lib/firebase';
 import { User } from 'firebase/auth';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -28,6 +28,57 @@ type RumSample = {
   image: string;
 };
 
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo: auth?.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 const DEFAULT_TASTINGS: TastingEvent[] = [
   { id: 'tasting-eminente', name: 'Eminente', createdAt: 0 }
 ];
@@ -42,14 +93,16 @@ const DEFAULT_SAMPLES: RumSample[] = [
 ];
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<'splash' | 'dashboard' | 'tasting'>('splash');
+  const [currentScreen, setCurrentScreen] = useState<'splash' | 'dashboard' | 'tasting' | 'profile'>('splash');
   const [selectedTastingId, setSelectedTastingId] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState(false);
   
   const [tastings, setTastings] = useState<TastingEvent[]>(DEFAULT_TASTINGS);
   const [samples, setSamples] = useState<RumSample[]>(DEFAULT_SAMPLES);
   
   const [tastingData, setTastingData] = useState<Record<string, RatingData>>({});
   const [customImages, setCustomImages] = useState<Record<string, string>>({});
+  const [userTheme, setUserTheme] = useState<string>('#D4AF37');
   
   const [activeModal, setActiveModal] = useState<'rating' | 'addTasting' | 'addSample' | null>(null);
   const [currentSampleId, setCurrentSampleId] = useState<string | null>(null);
@@ -111,6 +164,10 @@ export default function App() {
     if (savedSamples) {
       try { setSamples(JSON.parse(savedSamples)); } catch (e) {}
     }
+    const savedTheme = localStorage.getItem('cubaLibreTheme');
+    if (savedTheme) {
+      setUserTheme(savedTheme);
+    }
   };
 
   const syncToFirestore = async (
@@ -118,6 +175,7 @@ export default function App() {
     newCustomImages: Record<string, string>, 
     newTastings: TastingEvent[],
     newSamples: RumSample[],
+    newTheme: string = userTheme,
     uid: string = user?.uid || ''
   ) => {
     if (!uid || !db) return;
@@ -127,12 +185,33 @@ export default function App() {
         customImages: newCustomImages,
         tastings: newTastings,
         samples: newSamples,
+        userTheme: newTheme,
         updatedAt: new Date().toISOString()
       }, { merge: true });
     } catch (e) {
-      console.error('Failed to sync to Firestore', e);
+      handleFirestoreError(e, OperationType.WRITE, `users/${uid}`);
     }
   };
+
+  useEffect(() => {
+    const r = parseInt(userTheme.substring(1, 3), 16) || 212;
+    const g = parseInt(userTheme.substring(3, 5), 16) || 175;
+    const b = parseInt(userTheme.substring(5, 7), 16) || 55;
+    
+    const lightR = Math.min(255, Math.floor(r * 1.3));
+    const lightG = Math.min(255, Math.floor(g * 1.3));
+    const lightB = Math.min(255, Math.floor(b * 1.3));
+    
+    const darkR = Math.floor(r * 0.7);
+    const darkG = Math.floor(g * 0.7);
+    const darkB = Math.floor(b * 0.7);
+
+    const toHex = (c: number) => c.toString(16).padStart(2, '0');
+    
+    document.documentElement.style.setProperty('--color-gold-main', userTheme);
+    document.documentElement.style.setProperty('--color-gold-light', `#${toHex(lightR)}${toHex(lightG)}${toHex(lightB)}`);
+    document.documentElement.style.setProperty('--color-gold-dark', `#${toHex(darkR)}${toHex(darkG)}${toHex(darkB)}`);
+  }, [userTheme]);
 
   useEffect(() => {
     const onboardingComplete = localStorage.getItem('onboardingComplete');
@@ -194,12 +273,17 @@ export default function App() {
               setSamples(data.samples);
               localStorage.setItem('cubaLibreSamples', JSON.stringify(data.samples));
             }
+            if (data.userTheme) {
+              setUserTheme(data.userTheme);
+              localStorage.setItem('cubaLibreTheme', data.userTheme);
+            }
           } else {
             // No remote data, sync local data up
-            syncToFirestore(localTastingData, localCustomImages, localTastings, localSamples, currentUser.uid);
+            syncToFirestore(localTastingData, localCustomImages, localTastings, localSamples, userTheme, currentUser.uid);
           }
           setIsLoadingUser(false);
         }, (error) => {
+          handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
           console.error('Failed to load from Firestore', error);
           showToast('Nepodarilo sa načítať dáta z cloudu. Používam lokálne dáta.', 'error');
           loadLocalData();
@@ -276,6 +360,12 @@ export default function App() {
     }
   };
 
+  const saveTheme = (newTheme: string) => {
+    setUserTheme(newTheme);
+    localStorage.setItem('cubaLibreTheme', newTheme);
+    if (user) syncToFirestore(tastingData, customImages, tastings, samples, newTheme);
+  };
+
   const handleAddTasting = (name: string) => {
     const newTasting: TastingEvent = { id: `tasting-${Date.now()}`, name, createdAt: Date.now() };
     const newTastings = [...tastings, newTasting];
@@ -312,10 +402,10 @@ export default function App() {
   const hasRatings = ratedSamples.length > 0;
 
   const avgData = hasRatings ? [
-    { subject: 'Vizuál', A: Number((ratedSamples.reduce((sum, s) => sum + tastingData[s.id].visual, 0) / ratedSamples.length).toFixed(1)), fullMark: 5 },
-    { subject: 'Vôňa', A: Number((ratedSamples.reduce((sum, s) => sum + tastingData[s.id].aroma, 0) / ratedSamples.length).toFixed(1)), fullMark: 5 },
-    { subject: 'Chuť', A: Number((ratedSamples.reduce((sum, s) => sum + tastingData[s.id].taste, 0) / ratedSamples.length).toFixed(1)), fullMark: 5 },
-    { subject: 'Celkovo', A: Number((ratedSamples.reduce((sum, s) => sum + tastingData[s.id].overall, 0) / ratedSamples.length).toFixed(1)), fullMark: 5 },
+    { subject: 'Vizuál', A: Number((ratedSamples.reduce((sum, s) => sum + tastingData[s.id].visual, 0) / ratedSamples.length).toFixed(1)), fullMark: 10 },
+    { subject: 'Vôňa', A: Number((ratedSamples.reduce((sum, s) => sum + tastingData[s.id].aroma, 0) / ratedSamples.length).toFixed(1)), fullMark: 10 },
+    { subject: 'Chuť', A: Number((ratedSamples.reduce((sum, s) => sum + tastingData[s.id].taste, 0) / ratedSamples.length).toFixed(1)), fullMark: 10 },
+    { subject: 'Celkovo', A: Number((ratedSamples.reduce((sum, s) => sum + tastingData[s.id].overall, 0) / ratedSamples.length).toFixed(1)), fullMark: 10 },
   ] : [];
 
   return (
@@ -355,15 +445,19 @@ export default function App() {
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 className="mb-6"
               >
-                <img 
-                  src="https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg" 
-                  alt="The Cuba Libre Logo" 
-                  className="w-32 h-32 object-cover rounded-full border-2 border-gold-main/30 shadow-[0_0_15px_rgba(212,175,55,0.3)]"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/141414/D4AF37?text=The+Cuba+Libre';
-                  }}
-                />
+                {logoError ? (
+                  <div className="w-32 h-32 rounded-full border-2 border-gold-main/30 shadow-[0_0_15px_rgba(212,175,55,0.3)] flex items-center justify-center bg-bg-panel">
+                    <Wine className="w-16 h-16 text-gold-main" />
+                  </div>
+                ) : (
+                  <img 
+                    src="https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg" 
+                    alt="The Cuba Libre Logo" 
+                    className="w-32 h-32 object-cover rounded-full border-2 border-gold-main/30 shadow-[0_0_15px_rgba(212,175,55,0.3)]"
+                    referrerPolicy="no-referrer"
+                    onError={() => setLogoError(true)}
+                  />
+                )}
               </motion.div>
               <h1 className="text-4xl leading-tight mb-5 gold-text">The Cuba Libre</h1>
               <h2 className="text-2xl font-heading font-semibold">Rum & Cigar House</h2>
@@ -389,30 +483,44 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             className="flex-1 flex flex-col p-5"
           >
-            <header className="text-center py-5 pb-7 border-b border-white/5 mb-8 relative">
-              <h2 className="text-2xl tracking-wide gold-text">Degustačný Denník</h2>
-              <p className="text-text-muted text-sm mt-2">Vaše degustácie</p>
-              
-              {isInstallable && (
-                <div className="absolute top-5 left-0">
+            <header className="sticky top-0 z-50 bg-gradient-to-b from-bg-dark/95 to-bg-dark/80 backdrop-blur-md border-b border-gold-main/20 px-5 py-4 mb-8 flex items-center justify-between shadow-[0_4px_20px_rgba(0,0,0,0.5)] -mx-5">
+              <div className="flex-1 flex justify-start">
+                {isInstallable && (
                   <button onClick={handleInstallClick} className="text-xs text-gold-main hover:text-gold-light flex flex-col items-center transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 mb-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                     Inštalovať
                   </button>
-                </div>
-              )}
+                )}
+              </div>
+              
+              <div className="flex-1 flex flex-col items-center justify-center">
+                {logoError ? (
+                  <div className="w-10 h-10 rounded-full border border-gold-main/30 flex items-center justify-center bg-bg-panel mb-1">
+                    <Wine className="w-5 h-5 text-gold-main" />
+                  </div>
+                ) : (
+                  <img 
+                    src="https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg" 
+                    alt="The Cuba Libre Logo" 
+                    className="w-10 h-10 object-cover rounded-full border border-gold-main/30 mb-1"
+                    referrerPolicy="no-referrer"
+                    onError={() => setLogoError(true)}
+                  />
+                )}
+                <h2 className="text-xl tracking-wide gold-text font-heading text-center whitespace-nowrap">Degustačný Denník</h2>
+              </div>
 
-              <div className="absolute top-5 right-0">
+              <div className="flex-1 flex justify-end">
                 {isLoadingUser ? (
-                  <div className="w-8 h-8 rounded-full border-2 border-gold-main/30 border-t-gold-main animate-spin mx-auto"></div>
+                  <div className="w-8 h-8 rounded-full border-2 border-gold-main/30 border-t-gold-main animate-spin"></div>
                 ) : user ? (
-                  <button onClick={handleLogout} className="text-xs text-text-muted hover:text-gold-main flex flex-col items-center transition-colors">
+                  <button onClick={() => setCurrentScreen('profile')} className="text-xs text-text-muted hover:text-gold-main flex flex-col items-center transition-colors">
                     {user.photoURL ? (
-                      <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full mb-1 border border-gold-main/50" />
+                      <img src={user.photoURL} alt="User" className="w-7 h-7 rounded-full mb-1 border border-gold-main/50" />
                     ) : (
-                      <LogOut className="w-6 h-6 mb-1" />
+                      <UserIcon className="w-6 h-6 mb-1" />
                     )}
-                    Odhlásiť
+                    Profil
                   </button>
                 ) : (
                   <button onClick={handleLogin} className="text-xs text-text-muted hover:text-gold-main flex flex-col items-center transition-colors">
@@ -453,6 +561,7 @@ export default function App() {
                           visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
                         }}
                         onClick={() => { setSelectedTastingId(tasting.id); setCurrentScreen('tasting'); }}
+                        whileHover={{ scale: 1.02, y: -2, boxShadow: "0 10px 30px -10px var(--color-gold-main)" }}
                         whileTap={{ scale: 0.98 }}
                         className="relative overflow-hidden rounded-2xl p-6 shadow-2xl cursor-pointer group transition-all duration-300 border border-white/5 hover:border-gold-main/40"
                       >
@@ -480,7 +589,7 @@ export default function App() {
                             </div>
                           </div>
                           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gold-main/10 to-transparent border border-gold-main/20 flex items-center justify-center group-hover:bg-gold-main group-hover:border-gold-main transition-all duration-300 shadow-[0_0_15px_rgba(212,175,55,0.1)] group-hover:shadow-[0_0_20px_rgba(212,175,55,0.4)]">
-                            <ChevronRight className="w-6 h-6 text-gold-main group-hover:text-bg-dark transition-colors" />
+                            <ChevronRight className="w-6 h-6 text-gold-main group-hover:text-bg-dark transition-all duration-300 group-hover:translate-x-0.5" />
                           </div>
                         </div>
                       </motion.div>
@@ -493,6 +602,8 @@ export default function App() {
                       visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
                     }}
                     onClick={() => setActiveModal('addTasting')} 
+                    whileHover={{ scale: 1.02, backgroundColor: "rgba(212,175,55,0.05)" }}
+                    whileTap={{ scale: 0.98 }}
                     className="mt-4 relative overflow-hidden rounded-2xl p-5 text-gold-main flex items-center justify-center gap-4 transition-all duration-300 group border border-dashed border-gold-main/30 hover:border-gold-main/60 bg-black/20 hover:bg-gold-main/5"
                   >
                     <div className="w-12 h-12 rounded-full bg-gold-main/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-gold-main/20 transition-all duration-300">
@@ -558,6 +669,7 @@ export default function App() {
                   <motion.div
                     key={id}
                     onClick={() => openRatingModal(id)}
+                    whileHover={{ scale: 1.02, x: 4 }}
                     whileTap={{ scale: 0.98 }}
                     animate={{ 
                       scale: isSelected ? 1.02 : 1,
@@ -577,14 +689,17 @@ export default function App() {
                     )}
                     
                     <div className="relative shrink-0">
-                      <div className="w-16 h-20 rounded-lg overflow-hidden border border-white/10 shadow-md bg-black/50">
+                      <div className="w-20 h-24 rounded-xl overflow-hidden border border-white/10 shadow-md bg-black/50 group-hover:border-gold-main/30 transition-colors">
                         <img 
                           src={imageUrl} 
                           alt={sample.name} 
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           referrerPolicy="no-referrer"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = `https://placehold.co/100x200/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
+                            const target = e.target as HTMLImageElement;
+                            if (!target.src.includes('placehold.co')) {
+                              target.src = `https://placehold.co/100x200/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
+                            }
                           }}
                         />
                       </div>
@@ -596,7 +711,7 @@ export default function App() {
                     </div>
                     
                     <div className="flex-1 min-w-0 py-1">
-                      <h3 className="font-body font-medium text-lg text-gold-light truncate mb-1">{sample.name}</h3>
+                      <h3 className="font-heading font-medium text-xl text-gold-light truncate mb-1 group-hover:text-gold-main transition-colors">{sample.name}</h3>
                       {isRated ? (
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-1">
@@ -629,15 +744,17 @@ export default function App() {
               })}
 
               {isAdmin && (
-                <button 
+                <motion.button 
                   onClick={() => setActiveModal('addSample')} 
-                  className="mt-2 border border-dashed border-gold-main/30 rounded-2xl p-5 text-gold-main flex flex-col items-center justify-center gap-3 hover:bg-gold-main/5 hover:border-gold-main/60 transition-all group"
+                  whileHover={{ scale: 1.02, backgroundColor: "rgba(212,175,55,0.05)" }}
+                  whileTap={{ scale: 0.98 }}
+                  className="mt-2 border border-dashed border-gold-main/30 rounded-2xl p-5 text-gold-main flex flex-col items-center justify-center gap-3 hover:bg-gold-main/5 hover:border-gold-main/60 transition-all group w-full"
                 >
                   <div className="w-10 h-10 rounded-full bg-gold-main/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Plus className="w-5 h-5" />
                   </div>
                   <span className="font-medium tracking-wide">Pridať novú vzorku</span>
-                </button>
+                </motion.button>
               )}
 
               {hasRatings && (
@@ -677,6 +794,20 @@ export default function App() {
             </div>
           </motion.div>
         )}
+
+        {currentScreen === 'profile' && user && (
+          <ProfileScreen 
+            user={user}
+            setUser={setUser}
+            tastings={tastings}
+            tastingData={tastingData}
+            setCurrentScreen={setCurrentScreen}
+            handleLogout={handleLogout}
+            showToast={showToast}
+            userTheme={userTheme}
+            saveTheme={saveTheme}
+          />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -715,6 +846,223 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+const THEMES = [
+  { id: 'gold', name: 'Zlatá (Gold)', color: '#D4AF37' },
+  { id: 'ruby', name: 'Rubínová (Ruby)', color: '#E63946' },
+  { id: 'sapphire', name: 'Zafírová (Sapphire)', color: '#4285F4' },
+  { id: 'emerald', name: 'Smaragdová (Emerald)', color: '#34A853' },
+  { id: 'amethyst', name: 'Ametystová (Amethyst)', color: '#A142F4' },
+];
+
+function ProfileScreen({ user, setUser, tastings, tastingData, setCurrentScreen, handleLogout, showToast, userTheme, saveTheme }: any) {
+  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const totalTastings = tastings.length;
+  const totalRated = Object.keys(tastingData).length;
+  const avgOverall = totalRated > 0
+    ? (Object.values(tastingData).reduce((sum: number, r: any) => sum + r.overall, 0) / totalRated).toFixed(1)
+    : '0.0';
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setPhotoURL(dataUrl);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
+    if (!auth?.currentUser) return;
+    setIsSaving(true);
+    try {
+      await updateProfile(auth.currentUser, { displayName, photoURL });
+      setUser({ ...auth.currentUser });
+      showToast('Profil bol úspešne aktualizovaný', 'success');
+    } catch (e) {
+      showToast('Chyba pri aktualizácii profilu', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <motion.div
+      key="profile"
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="flex-1 flex flex-col relative min-h-screen pb-20"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gold-main/5 via-bg-main to-bg-main pointer-events-none z-0"></div>
+      
+      <header className="sticky top-0 z-20 bg-bg-main/90 backdrop-blur-md text-center py-5 px-5 border-b border-white/5 mb-6">
+        <button 
+          onClick={() => setCurrentScreen('dashboard')} 
+          className="absolute left-5 top-1/2 -translate-y-1/2 text-text-muted hover:text-gold-main flex items-center gap-1 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h2 className="text-xl tracking-wide gold-text font-heading">Môj Profil</h2>
+      </header>
+
+      <div className="px-5 relative z-10 space-y-8">
+        <div className="bg-bg-panel border border-white/5 rounded-2xl p-6 shadow-xl">
+          <div className="flex flex-col items-center mb-6">
+            <div 
+              className="relative w-24 h-24 rounded-full border-2 border-gold-main/50 overflow-hidden mb-4 bg-black/50 flex items-center justify-center cursor-pointer group"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {photoURL ? (
+                <img src={photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <UserIcon className="w-10 h-10 text-gold-main/50" />
+              )}
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="w-6 h-6 text-white" />
+              </div>
+            </div>
+            <h3 className="text-lg font-medium text-white">{displayName || 'Neznámy používateľ'}</h3>
+            <p className="text-sm text-text-muted">{user?.email}</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-text-muted text-xs mb-2 uppercase tracking-widest">Zobrazené meno</label>
+              <input 
+                type="text" 
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white focus:border-gold-main/50 focus:outline-none transition-colors"
+                placeholder="Vaše meno"
+              />
+            </div>
+            <div>
+              <label className="block text-text-muted text-xs mb-2 uppercase tracking-widest">Profilová fotka</label>
+              <input 
+                type="file" 
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white hover:border-gold-main/50 focus:outline-none transition-colors flex items-center justify-center gap-2"
+              >
+                <Camera className="w-5 h-5 text-gold-main" />
+                Vybrať fotku z galérie
+              </button>
+            </div>
+
+            <div className="pt-2">
+              <label className="block text-text-muted text-xs mb-3 uppercase tracking-widest">Farebná téma</label>
+              <div className="flex flex-wrap gap-3">
+                {THEMES.map(theme => (
+                  <button
+                    key={theme.id}
+                    onClick={() => saveTheme(theme.color)}
+                    className={`w-10 h-10 rounded-full border-2 transition-transform shadow-lg ${userTheme.toUpperCase() === theme.color.toUpperCase() ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                    style={{ backgroundColor: theme.color }}
+                    title={theme.name}
+                  />
+                ))}
+                <div 
+                  className={`relative w-10 h-10 rounded-full overflow-hidden border-2 transition-transform shadow-lg ${!THEMES.find(t => t.color.toUpperCase() === userTheme.toUpperCase()) ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`} 
+                  title="Vlastná farba"
+                >
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ backgroundColor: userTheme }}>
+                    <span className="text-[10px] font-bold text-white mix-blend-difference">Vlastná</span>
+                  </div>
+                  <input 
+                    type="color" 
+                    value={userTheme}
+                    onChange={(e) => saveTheme(e.target.value)}
+                    className="absolute inset-[-10px] w-[60px] h-[60px] cursor-pointer opacity-0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <motion.button 
+              onClick={handleSave}
+              disabled={isSaving}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full btn-gold py-3 rounded-xl font-medium flex items-center justify-center gap-2 mt-4"
+            >
+              {isSaving ? <div className="w-5 h-5 border-2 border-bg-main border-t-transparent rounded-full animate-spin"></div> : <Save className="w-5 h-5" />}
+              Uložiť zmeny
+            </motion.button>
+          </div>
+        </div>
+
+        <div className="bg-bg-panel border border-white/5 rounded-2xl p-6 shadow-xl">
+          <h3 className="text-lg gold-text mb-4 flex items-center gap-2">
+            <BarChart2 className="w-5 h-5" />
+            Štatistiky degustácií
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-black/20 rounded-xl p-4 border border-white/5 text-center">
+              <div className="text-3xl font-heading text-gold-main mb-1">{totalTastings}</div>
+              <div className="text-xs text-text-muted uppercase tracking-wider">Degustácie</div>
+            </div>
+            <div className="bg-black/20 rounded-xl p-4 border border-white/5 text-center">
+              <div className="text-3xl font-heading text-gold-main mb-1">{totalRated}</div>
+              <div className="text-xs text-text-muted uppercase tracking-wider">Hodnotené vzorky</div>
+            </div>
+            <div className="bg-black/20 rounded-xl p-4 border border-white/5 text-center col-span-2">
+              <div className="text-4xl font-heading text-gold-light mb-1">{avgOverall} <span className="text-lg text-gold-main/50">/ 10</span></div>
+              <div className="text-xs text-text-muted uppercase tracking-wider">Priemerné hodnotenie</div>
+            </div>
+          </div>
+        </div>
+
+        <motion.button 
+          onClick={handleLogout}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full py-4 rounded-xl border border-red-500/30 text-red-400 font-medium flex items-center justify-center gap-2 hover:bg-red-500/10 transition-colors"
+        >
+          <LogOut className="w-5 h-5" />
+          Odhlásiť sa
+        </motion.button>
+      </div>
+    </motion.div>
   );
 }
 
@@ -913,7 +1261,7 @@ function RatingModal({
           <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-6"></div>
           
           <div className="flex justify-between items-start mb-6">
-          <h2 className="text-2xl font-semibold gold-text leading-tight pr-4">{sample.name}</h2>
+          <h2 className="text-3xl font-heading font-medium gold-text leading-tight pr-4 tracking-wide">{sample.name}</h2>
           <button onClick={onClose} className="text-text-muted hover:text-gold-main transition-colors bg-white/5 p-2 rounded-full">
             <X className="w-5 h-5" />
           </button>
@@ -973,17 +1321,23 @@ function RatingModal({
             </div>
           ) : null}
 
-          <div className="w-full h-56 rounded-2xl overflow-hidden border border-white/10 relative group shadow-lg bg-black/50">
+          <div className="w-full h-64 rounded-2xl overflow-hidden border border-gold-main/20 relative group shadow-[0_8px_30px_rgba(0,0,0,0.5)] bg-black/50">
             <img 
               src={imageUrl} 
               alt={sample.name} 
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               referrerPolicy="no-referrer"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = `https://placehold.co/600x400/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
+                const target = e.target as HTMLImageElement;
+                if (!target.src.includes('placehold.co')) {
+                  target.src = `https://placehold.co/600x400/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
+                }
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
+            <div className="absolute bottom-4 left-4 right-4">
+              <h3 className="text-white font-heading text-xl drop-shadow-md">{sample.name}</h3>
+            </div>
           </div>
         </div>
 
@@ -1017,24 +1371,34 @@ function RatingModal({
 }
 
 function RatingGroup({ label, value, onChange }: { label: string; value: number; onChange: (val: number) => void }) {
+  const max = 10;
   return (
-    <div>
+    <div className="mb-6">
       <div className="flex justify-between items-center mb-3">
         <label className="text-text-muted text-xs uppercase tracking-widest">{label}</label>
         <span className={`font-mono text-sm font-medium ${value > 0 ? 'text-gold-main' : 'text-text-muted'}`}>
-          {value}/5
+          {value}/{max}
         </span>
       </div>
-      <div className="flex gap-3 text-3xl text-[#333]">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`w-9 h-9 cursor-pointer transition-all duration-200 active:scale-110 ${
-              star <= value ? 'fill-gold-main text-gold-main drop-shadow-[0_0_8px_rgba(212,175,55,0.4)]' : 'fill-white/5 text-white/10 hover:fill-white/10'
-            }`}
-            onClick={() => onChange(star)}
-          />
-        ))}
+      <div className="relative h-3 bg-black/40 rounded-full overflow-hidden border border-white/5 shadow-inner">
+        <div 
+          className="absolute top-0 left-0 h-full bg-gradient-to-r from-gold-dark via-gold-main to-gold-light transition-all duration-300 ease-out"
+          style={{ width: `${(value / max) * 100}%` }}
+        />
+        <input 
+          type="range" 
+          min="0" 
+          max={max} 
+          step="0.5"
+          value={value} 
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+          className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
+        />
+      </div>
+      <div className="flex justify-between text-[10px] text-text-muted mt-2 px-1 font-mono">
+        <span>0</span>
+        <span>{max / 2}</span>
+        <span>{max}</span>
       </div>
     </div>
   );

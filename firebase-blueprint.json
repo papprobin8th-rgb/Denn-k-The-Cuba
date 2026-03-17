@@ -1,0 +1,128 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Stores user's tasting data, custom images, tastings, and samples.",
+      "type": "object",
+      "properties": {
+        "userTheme": {
+          "type": "string",
+          "description": "User's selected color theme."
+        },
+        "tastingData": {
+          "type": "object",
+          "description": "A map of sample IDs to their corresponding rating data.",
+          "additionalProperties": {
+            "$ref": "#/entities/RatingData"
+          }
+        },
+        "customImages": {
+          "type": "object",
+          "description": "A map of sample IDs to custom image URLs.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tastings": {
+          "type": "array",
+          "description": "List of tasting events.",
+          "items": {
+            "$ref": "#/entities/TastingEvent"
+          }
+        },
+        "samples": {
+          "type": "array",
+          "description": "List of rum samples.",
+          "items": {
+            "$ref": "#/entities/RumSample"
+          }
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the last update."
+        }
+      }
+    },
+    "RatingData": {
+      "title": "RatingData",
+      "description": "Rating data for a specific sample.",
+      "type": "object",
+      "properties": {
+        "visual": {
+          "type": "number",
+          "description": "Visual rating (0-10)."
+        },
+        "aroma": {
+          "type": "number",
+          "description": "Aroma rating (0-10)."
+        },
+        "taste": {
+          "type": "number",
+          "description": "Taste rating (0-10)."
+        },
+        "overall": {
+          "type": "number",
+          "description": "Overall rating (0-10)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Custom notes."
+        }
+      },
+      "required": ["visual", "aroma", "taste", "overall", "notes"]
+    },
+    "TastingEvent": {
+      "title": "TastingEvent",
+      "description": "A tasting event.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ID of the tasting event."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the tasting event."
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Creation timestamp."
+        }
+      },
+      "required": ["id", "name", "createdAt"]
+    },
+    "RumSample": {
+      "title": "RumSample",
+      "description": "A rum sample.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ID of the sample."
+        },
+        "tastingId": {
+          "type": "string",
+          "description": "ID of the tasting event this sample belongs to."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the sample."
+        },
+        "image": {
+          "type": "string",
+          "description": "Image URL of the sample."
+        }
+      },
+      "required": ["id", "tastingId", "name", "image"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "User's tasting data."
+    }
+  }
+}

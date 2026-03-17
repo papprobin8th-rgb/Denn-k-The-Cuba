@@ -1,0 +1,65 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - tastingData: map (optional) - A map of sample IDs to their corresponding rating data.
+    //   - customImages: map (optional) - A map of sample IDs to custom image URLs.
+    //   - tastings: list (optional) - List of tasting events.
+    //   - samples: list (optional) - List of rum samples.
+    //   - userTheme: string (optional) - User's selected color theme.
+    //   - updatedAt: string (optional) - Timestamp of the last update.
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    // Check if the user is authenticated
+    function isAuthenticated() {
+       return request.auth != null;
+    }
+    
+    // Check if user owns the resource (for user-owned documents)
+    function isOwner(userId) {
+       return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Validate that a map contains only allowed keys
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+    
+    // Validate ISO 8601 date string format (YYYY-MM-DDTHH:MM:SS)
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+    
+    // Domain Validators
+    function isValidUserProfile(data) {
+      return hasOnlyAllowedFields(['tastingData', 'customImages', 'tastings', 'samples', 'userTheme', 'updatedAt']) &&
+             (!('tastingData' in data) || data.tastingData is map) &&
+             (!('customImages' in data) || data.customImages is map) &&
+             (!('tastings' in data) || data.tastings is list) &&
+             (!('samples' in data) || data.samples is list) &&
+             (!('userTheme' in data) || (data.userTheme is string && data.userTheme.size() <= 20)) &&
+             (!('updatedAt' in data) || isValidDateString(data.updatedAt));
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile(request.resource.data);
+      allow update: if isOwner(userId) && isValidUserProfile(request.resource.data);
+      allow delete: if isOwner(userId);
+    }
+  }
+}
