@@ -382,7 +382,7 @@ export default function App() {
       id: `sample-${Date.now()}`, 
       tastingId: selectedTastingId, 
       name, 
-      image: `https://placehold.co/400x600/141414/D4AF37?text=${encodeURIComponent(name.split(' ').join('\n'))}` 
+      image: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=141414&color=D4AF37&size=400` 
     };
     const newSamples = [...samples, newSample];
     setSamples(newSamples);
@@ -451,7 +451,7 @@ export default function App() {
                   </div>
                 ) : (
                   <img 
-                    src="https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg" 
+                    src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=400" 
                     alt="The Cuba Libre Logo" 
                     className="w-32 h-32 object-cover rounded-full border-2 border-gold-main/30 shadow-[0_0_15px_rgba(212,175,55,0.3)]"
                     referrerPolicy="no-referrer"
@@ -500,7 +500,7 @@ export default function App() {
                   </div>
                 ) : (
                   <img 
-                    src="https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg" 
+                    src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=400" 
                     alt="The Cuba Libre Logo" 
                     className="w-10 h-10 object-cover rounded-full border border-gold-main/30 mb-1"
                     referrerPolicy="no-referrer"
@@ -697,8 +697,8 @@ export default function App() {
                           referrerPolicy="no-referrer"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            if (!target.src.includes('placehold.co')) {
-                              target.src = `https://placehold.co/100x200/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
+                            if (!target.src.includes('ui-avatars.com')) {
+                              target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(sample.name)}&background=141414&color=D4AF37&size=400`;
                             }
                           }}
                         />
@@ -1329,8 +1329,8 @@ function RatingModal({
               referrerPolicy="no-referrer"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                if (!target.src.includes('placehold.co')) {
-                  target.src = `https://placehold.co/600x400/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
+                if (!target.src.includes('ui-avatars.com')) {
+                  target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(sample.name)}&background=141414&color=D4AF37&size=400`;
                 }
               }}
             />
