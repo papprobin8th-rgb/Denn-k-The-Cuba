@@ -21,8 +21,7 @@
   body {
     font-family: var(--font-body);
     background-color: var(--color-bg-dark);
-    background-image: radial-gradient(circle at 50% 10%, #201e1a 0%, #070707 60%);
-    background-attachment: fixed;
+    background-image: radial-gradient(circle at center, rgba(212, 175, 55, 0.15) 0%, var(--color-bg-dark) 70%);
     color: var(--color-text-main);
     min-height: 100vh;
     display: flex;
@@ -104,5 +103,18 @@
   
   .btn-outline:active {
     background: rgba(212, 175, 55, 0.1);
+  }
+
+  @keyframes country-glow {
+    0%, 100% {
+      filter: drop-shadow(0 0 2px var(--glow-color, rgba(212, 175, 55, 0.4)));
+    }
+    50% {
+      filter: drop-shadow(0 0 8px var(--glow-color, rgba(212, 175, 55, 0.8)));
+    }
+  }
+
+  .animate-country-glow {
+    animation: country-glow 3s infinite ease-in-out;
   }
 }

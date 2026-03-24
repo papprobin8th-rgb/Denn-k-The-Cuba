@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, ChevronRight, AlertCircle, Check, Image, Edit2, Camera, LogIn, LogOut, Plus, ArrowLeft, BarChart2, User as UserIcon, Save } from 'lucide-react';
+import { Martini, Wine, CheckCircle, Bookmark, X, Star, Shield, ChevronRight, AlertCircle, Check, Image, Edit2, Camera, LogIn, LogOut, Plus, ArrowLeft, BarChart2, User as UserIcon, Save, Share2, Globe, Eye, Wind, Coffee, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, updateProfile, doc, setDoc, getDoc, onSnapshot } from './lib/firebase';
 import { User } from 'firebase/auth';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import QRCode from 'react-qr-code';
+import WorldMap from './WorldMap';
+import { getCountryFlag } from './lib/flags';
 
 type RatingData = {
   visual: number;
@@ -11,6 +14,8 @@ type RatingData = {
   taste: number;
   overall: number;
   notes: string;
+  country?: string;
+  tags?: string[];
 };
 
 type ToastType = 'success' | 'error' | 'info';
@@ -96,6 +101,7 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<'splash' | 'dashboard' | 'tasting' | 'profile'>('splash');
   const [selectedTastingId, setSelectedTastingId] = useState<string | null>(null);
   const [logoError, setLogoError] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
   
   const [tastings, setTastings] = useState<TastingEvent[]>(DEFAULT_TASTINGS);
   const [samples, setSamples] = useState<RumSample[]>(DEFAULT_SAMPLES);
@@ -382,7 +388,7 @@ export default function App() {
       id: `sample-${Date.now()}`, 
       tastingId: selectedTastingId, 
       name, 
-      image: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=141414&color=D4AF37&size=400` 
+      image: `https://placehold.co/400x600/141414/D4AF37?text=${encodeURIComponent(name.split(' ').join('\n'))}` 
     };
     const newSamples = [...samples, newSample];
     setSamples(newSamples);
@@ -451,7 +457,7 @@ export default function App() {
                   </div>
                 ) : (
                   <img 
-                    src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=400" 
+                    src="https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg" 
                     alt="The Cuba Libre Logo" 
                     className="w-32 h-32 object-cover rounded-full border-2 border-gold-main/30 shadow-[0_0_15px_rgba(212,175,55,0.3)]"
                     referrerPolicy="no-referrer"
@@ -500,7 +506,7 @@ export default function App() {
                   </div>
                 ) : (
                   <img 
-                    src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=400" 
+                    src="https://raw.githubusercontent.com/papprobin8th-rgb/Denn-k-The-Cuba/main/public/Logocuba.jpg" 
                     alt="The Cuba Libre Logo" 
                     className="w-10 h-10 object-cover rounded-full border border-gold-main/30 mb-1"
                     referrerPolicy="no-referrer"
@@ -532,8 +538,11 @@ export default function App() {
             </header>
 
             {isLoadingUser ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="w-10 h-10 rounded-full border-2 border-gold-main/30 border-t-gold-main animate-spin"></div>
+              <div className="flex-1 flex flex-col gap-4">
+                <div className="h-8 bg-white/5 rounded-md w-1/3 animate-pulse mb-2"></div>
+                <div className="h-24 bg-white/5 rounded-2xl animate-pulse"></div>
+                <div className="h-24 bg-white/5 rounded-2xl animate-pulse"></div>
+                <div className="h-24 bg-white/5 rounded-2xl animate-pulse"></div>
               </div>
             ) : user ? (
               <>
@@ -557,8 +566,8 @@ export default function App() {
                       <motion.div
                         key={tasting.id}
                         variants={{
-                          hidden: { opacity: 0, y: 20 },
-                          visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+                          hidden: { opacity: 0, y: 15 },
+                          visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } }
                         }}
                         onClick={() => { setSelectedTastingId(tasting.id); setCurrentScreen('tasting'); }}
                         whileHover={{ scale: 1.02, y: -2, boxShadow: "0 10px 30px -10px var(--color-gold-main)" }}
@@ -598,8 +607,8 @@ export default function App() {
 
                   <motion.button 
                     variants={{
-                      hidden: { opacity: 0, y: 20 },
-                      visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+                      hidden: { opacity: 0, y: 15 },
+                      visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } }
                     }}
                     onClick={() => setActiveModal('addTasting')} 
                     whileHover={{ scale: 1.02, backgroundColor: "rgba(212,175,55,0.05)" }}
@@ -658,138 +667,204 @@ export default function App() {
             </header>
 
             <div className="flex flex-col gap-4 flex-1 content-start px-5 pb-10 relative z-10">
-              {samples.filter(s => s.tastingId === selectedTastingId).map((sample) => {
-                const id = sample.id;
-                const isRated = !!tastingData[id];
-                const rating = tastingData[id];
-                const isSelected = currentSampleId === id;
-                const imageUrl = customImages[id] || sample.image;
-                
-                return (
-                  <motion.div
-                    key={id}
-                    onClick={() => openRatingModal(id)}
-                    whileHover={{ scale: 1.02, x: 4 }}
-                    whileTap={{ scale: 0.98 }}
-                    animate={{ 
-                      scale: isSelected ? 1.02 : 1,
-                      borderColor: isSelected ? '#D4AF37' : 'rgba(255, 255, 255, 0.05)'
-                    }}
-                    className={`
-                      border rounded-2xl p-4 shadow-lg cursor-pointer relative flex items-center gap-4
-                      active:bg-bg-panel-light transition-all duration-300 overflow-hidden group
-                      ${isRated 
-                        ? `bg-gradient-to-r ${rating.overall >= 4.5 ? 'from-bg-panel to-gold-main/20' : rating.overall >= 3.5 ? 'from-bg-panel to-gold-main/10' : 'from-bg-panel to-bg-panel-light'}` 
-                        : 'bg-bg-panel hover:border-gold-main/40'
-                      }
-                    `}
-                  >
-                    {isRated && rating.overall >= 4.5 && (
-                      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-gold-main/30 to-transparent pointer-events-none"></div>
-                    )}
+              {isLoadingUser ? (
+                <div className="flex flex-col gap-4">
+                  <div className="h-32 bg-white/5 rounded-2xl animate-pulse"></div>
+                  <div className="h-32 bg-white/5 rounded-2xl animate-pulse"></div>
+                  <div className="h-32 bg-white/5 rounded-2xl animate-pulse"></div>
+                </div>
+              ) : (
+                <>
+                  {samples.filter(s => s.tastingId === selectedTastingId).map((sample) => {
+                    const id = sample.id;
+                    const isRated = !!tastingData[id];
+                    const rating = tastingData[id];
+                    const isSelected = currentSampleId === id;
+                    const imageUrl = customImages[id] || sample.image;
                     
-                    <div className="relative shrink-0">
-                      <div className="w-20 h-24 rounded-xl overflow-hidden border border-white/10 shadow-md bg-black/50 group-hover:border-gold-main/30 transition-colors">
-                        <img 
-                          src={imageUrl} 
-                          alt={sample.name} 
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            if (!target.src.includes('ui-avatars.com')) {
-                              target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(sample.name)}&background=141414&color=D4AF37&size=400`;
-                            }
-                          }}
-                        />
-                      </div>
-                      {isRated && (
-                        <div className="absolute -bottom-2 -right-2 bg-bg-main border border-gold-main/50 rounded-full w-7 h-7 flex items-center justify-center shadow-lg">
-                          <CheckCircle className="w-4 h-4 text-gold-main" />
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0 py-1">
-                      <h3 className="font-heading font-medium text-xl text-gold-light truncate mb-1 group-hover:text-gold-main transition-colors">{sample.name}</h3>
-                      {isRated ? (
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star 
-                                key={star} 
-                                className={`w-3.5 h-3.5 ${star <= rating.overall ? 'text-gold-main fill-gold-main' : 'text-white/10 fill-white/5'}`} 
-                              />
-                            ))}
-                            <span className="text-xs text-gold-main ml-2 font-medium">{rating.overall}/5</span>
+                    return (
+                      <motion.div
+                        key={id}
+                        onClick={() => openRatingModal(id)}
+                        whileHover={{ 
+                          scale: 1.02, 
+                          x: 6,
+                          boxShadow: "0 10px 30px -10px rgba(212, 175, 55, 0.4)",
+                          borderColor: "rgba(212, 175, 55, 0.6)"
+                        }}
+                        whileTap={{ scale: 0.98 }}
+                        animate={{ 
+                          scale: isSelected ? 1.02 : 1,
+                          borderColor: isSelected ? '#D4AF37' : 'rgba(255, 255, 255, 0.05)',
+                          boxShadow: isSelected 
+                            ? "0 0 20px rgba(212, 175, 55, 0.25)" 
+                            : "0 10px 15px -3px rgba(0, 0, 0, 0.5)"
+                        }}
+                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                        className={`
+                          border rounded-2xl p-4 cursor-pointer relative flex items-center gap-4
+                          active:bg-bg-panel-light transition-colors duration-300 overflow-hidden group
+                          ${isRated 
+                            ? `bg-gradient-to-r ${rating.overall >= 4.5 ? 'from-bg-panel to-gold-main/20' : rating.overall >= 3.5 ? 'from-bg-panel to-gold-main/10' : 'from-bg-panel to-bg-panel-light'}` 
+                            : 'bg-bg-panel'
+                          }
+                        `}
+                      >
+                        {isRated && rating.overall >= 4.5 && (
+                          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-gold-main/30 to-transparent pointer-events-none"></div>
+                        )}
+                        
+                        <div className="relative shrink-0">
+                          <div className="w-20 h-24 rounded-xl overflow-hidden border border-white/10 shadow-md bg-black/50 group-hover:border-gold-main/50 group-hover:shadow-[0_0_15px_rgba(212,175,55,0.3)] transition-all duration-300">
+                            <img 
+                              src={imageUrl} 
+                              alt={sample.name} 
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                if (!target.src.includes('placehold.co')) {
+                                  target.src = `https://placehold.co/100x200/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
+                                }
+                              }}
+                            />
                           </div>
-                          {rating.notes && (
-                            <span className="text-xs text-text-muted truncate italic opacity-80">
-                              "{rating.notes}"
-                            </span>
+                          {isRated && (
+                            <div className="absolute -bottom-2 -right-2 bg-bg-main border border-gold-main/50 rounded-full w-7 h-7 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:shadow-[0_0_10px_rgba(212,175,55,0.4)] transition-all duration-300">
+                              <CheckCircle className="w-4 h-4 text-gold-main" />
+                            </div>
                           )}
                         </div>
-                      ) : (
-                        <p className="text-sm text-text-muted flex items-center gap-1.5">
-                          <Edit2 className="w-3.5 h-3.5 opacity-60" /> Klepnite pre hodnotenie
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="shrink-0 pl-2">
-                      <ChevronRight className={`w-5 h-5 transition-colors ${isRated ? 'text-gold-main/50' : 'text-text-muted group-hover:text-gold-main'}`} />
-                    </div>
-                  </motion.div>
-                );
-              })}
+                        
+                        <div className="flex-1 min-w-0 py-1">
+                          <h3 className="font-heading font-medium text-xl text-gold-light truncate mb-1 group-hover:text-gold-main transition-colors">{sample.name}</h3>
+                          {isRated && rating.country && (
+                            <div className="flex items-center gap-1.5 text-xs text-text-muted mb-2">
+                              <span className="text-sm leading-none">{getCountryFlag(rating.country)}</span>
+                              <span>{rating.country}</span>
+                            </div>
+                          )}
+                          {isRated ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex flex-col gap-1.5 mt-2 mb-2">
+                                {[
+                                  { label: 'Vizuál', value: rating.visual, icon: Eye, colorClass: 'bg-blue-400', textClass: 'text-blue-400' },
+                                  { label: 'Aróma', value: rating.aroma, icon: Wind, colorClass: 'bg-emerald-400', textClass: 'text-emerald-400' },
+                                  { label: 'Chuť', value: rating.taste, icon: Coffee, colorClass: 'bg-amber-400', textClass: 'text-amber-400' },
+                                  { label: 'Celkovo', value: rating.overall, icon: Award, colorClass: 'bg-gold-main', textClass: 'text-gold-main' },
+                                ].map(stat => {
+                                  const StatIcon = stat.icon;
+                                  return (
+                                    <div key={stat.label} className="flex items-center gap-2">
+                                      <div className="flex items-center gap-1 w-16">
+                                        <StatIcon className={`w-3 h-3 ${stat.textClass}`} />
+                                        <span className={`text-[9px] uppercase tracking-wider ${stat.textClass}`}>{stat.label}</span>
+                                      </div>
+                                      <div className="flex gap-1 flex-1">
+                                        {Array.from({ length: 10 }).map((_, i) => (
+                                          <div 
+                                            key={i} 
+                                            className={`w-1.5 h-1.5 rounded-full ${i < Math.round(stat.value) ? stat.colorClass : 'bg-white/10'}`} 
+                                          />
+                                        ))}
+                                      </div>
+                                      <span className={`text-[10px] font-mono w-6 text-right ${stat.textClass}`}>{stat.value}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {rating.tags && rating.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {rating.tags.map(tag => (
+                                    <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-sm bg-gold-main/10 text-gold-main border border-gold-main/20">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {rating.notes && (
+                                <div 
+                                  className="mt-1 group/notes cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedNotes(prev => ({ ...prev, [id]: !prev[id] }));
+                                  }}
+                                >
+                                  <p className={`text-xs text-text-muted italic opacity-80 transition-all duration-300 ${expandedNotes[id] ? '' : 'line-clamp-2'}`}>
+                                    "{rating.notes}"
+                                  </p>
+                                  {rating.notes.length > 60 && (
+                                    <div className="text-[10px] text-gold-main/70 uppercase tracking-wider mt-0.5 font-semibold group-hover/notes:text-gold-main transition-colors">
+                                      {expandedNotes[id] ? 'Zobraziť menej' : 'Čítať viac'}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-text-muted flex items-center gap-1.5">
+                              <Edit2 className="w-3.5 h-3.5 opacity-60" /> Klepnite pre hodnotenie
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="shrink-0 pl-2">
+                          <ChevronRight className={`w-5 h-5 transition-colors ${isRated ? 'text-gold-main/50' : 'text-text-muted group-hover:text-gold-main'}`} />
+                        </div>
+                      </motion.div>
+                    );
+                  })}
 
-              {isAdmin && (
-                <motion.button 
-                  onClick={() => setActiveModal('addSample')} 
-                  whileHover={{ scale: 1.02, backgroundColor: "rgba(212,175,55,0.05)" }}
-                  whileTap={{ scale: 0.98 }}
-                  className="mt-2 border border-dashed border-gold-main/30 rounded-2xl p-5 text-gold-main flex flex-col items-center justify-center gap-3 hover:bg-gold-main/5 hover:border-gold-main/60 transition-all group w-full"
-                >
-                  <div className="w-10 h-10 rounded-full bg-gold-main/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Plus className="w-5 h-5" />
-                  </div>
-                  <span className="font-medium tracking-wide">Pridať novú vzorku</span>
-                </motion.button>
-              )}
+                  {isAdmin && (
+                    <motion.button 
+                      onClick={() => setActiveModal('addSample')} 
+                      whileHover={{ scale: 1.02, backgroundColor: "rgba(212,175,55,0.05)" }}
+                      whileTap={{ scale: 0.98 }}
+                      className="mt-2 border border-dashed border-gold-main/30 rounded-2xl p-5 text-gold-main flex flex-col items-center justify-center gap-3 hover:bg-gold-main/5 hover:border-gold-main/60 transition-all group w-full"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-gold-main/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Plus className="w-5 h-5" />
+                      </div>
+                      <span className="font-medium tracking-wide">Pridať novú vzorku</span>
+                    </motion.button>
+                  )}
 
-              {hasRatings && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-8 border border-white/5 rounded-xl p-5 shadow-lg bg-bg-panel"
-                >
-                  <div className="flex items-center gap-2 mb-4">
-                    <BarChart2 className="w-5 h-5 text-gold-main" />
-                    <h3 className="text-lg gold-text">Profil degustácie</h3>
-                  </div>
-                  <p className="text-xs text-text-muted mb-4">Priemerné hodnotenie vzoriek v tejto degustácii.</p>
-                  
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={avgData}>
-                        <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#888888', fontSize: 12 }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fill: 'rgba(212,175,55,0.5)', fontSize: 10 }} />
-                        <Radar
-                          name="Priemer"
-                          dataKey="A"
-                          stroke="#D4AF37"
-                          fill="#D4AF37"
-                          fillOpacity={0.3}
-                        />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#141414', borderColor: 'rgba(212,175,55,0.3)', borderRadius: '8px' }}
-                          itemStyle={{ color: '#D4AF37' }}
-                        />
-                      </RadarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </motion.div>
+                  {hasRatings && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-8 border border-white/5 rounded-xl p-5 shadow-lg bg-bg-panel"
+                    >
+                      <div className="flex items-center gap-2 mb-4">
+                        <BarChart2 className="w-5 h-5 text-gold-main" />
+                        <h3 className="text-lg gold-text">Profil degustácie</h3>
+                      </div>
+                      <p className="text-xs text-text-muted mb-4">Priemerné hodnotenie vzoriek v tejto degustácii.</p>
+                      
+                      <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={avgData}>
+                            <PolarGrid stroke="rgba(255,255,255,0.2)" />
+                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#CCCCCC', fontSize: 12, fontWeight: 600 }} />
+                            <PolarRadiusAxis angle={30} domain={[0, 10]} tick={{ fill: 'rgba(255,215,0,0.6)', fontSize: 10 }} />
+                            <Radar
+                              name="Priemer"
+                              dataKey="A"
+                              stroke="#FFD700"
+                              strokeWidth={3}
+                              fill="#FFD700"
+                              fillOpacity={0.5}
+                            />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#141414', borderColor: 'rgba(255,215,0,0.4)', borderRadius: '8px' }}
+                              itemStyle={{ color: '#FFD700', fontWeight: 'bold' }}
+                            />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </motion.div>
+                  )}
+                </>
               )}
             </div>
           </motion.div>
@@ -801,6 +876,7 @@ export default function App() {
             setUser={setUser}
             tastings={tastings}
             tastingData={tastingData}
+            samples={samples}
             setCurrentScreen={setCurrentScreen}
             handleLogout={handleLogout}
             showToast={showToast}
@@ -849,24 +925,26 @@ export default function App() {
   );
 }
 
-const THEMES = [
-  { id: 'gold', name: 'Zlatá (Gold)', color: '#D4AF37' },
-  { id: 'ruby', name: 'Rubínová (Ruby)', color: '#E63946' },
-  { id: 'sapphire', name: 'Zafírová (Sapphire)', color: '#4285F4' },
-  { id: 'emerald', name: 'Smaragdová (Emerald)', color: '#34A853' },
-  { id: 'amethyst', name: 'Ametystová (Amethyst)', color: '#A142F4' },
-];
-
-function ProfileScreen({ user, setUser, tastings, tastingData, setCurrentScreen, handleLogout, showToast, userTheme, saveTheme }: any) {
+function ProfileScreen({ user, setUser, tastings, tastingData, samples, setCurrentScreen, handleLogout, showToast, userTheme, saveTheme }: any) {
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const totalTastings = tastings.length;
   const totalRated = Object.keys(tastingData).length;
   const avgOverall = totalRated > 0
-    ? (Object.values(tastingData).reduce((sum: number, r: any) => sum + r.overall, 0) / totalRated).toFixed(1)
+    ? (Number(Object.values(tastingData).reduce((sum: number, r: any) => sum + (r.overall || 0), 0)) / totalRated).toFixed(1)
+    : '0.0';
+  const avgVisual = totalRated > 0
+    ? (Number(Object.values(tastingData).reduce((sum: number, r: any) => sum + (r.visual || 0), 0)) / totalRated).toFixed(1)
+    : '0.0';
+  const avgAroma = totalRated > 0
+    ? (Number(Object.values(tastingData).reduce((sum: number, r: any) => sum + (r.aroma || 0), 0)) / totalRated).toFixed(1)
+    : '0.0';
+  const avgTaste = totalRated > 0
+    ? (Number(Object.values(tastingData).reduce((sum: number, r: any) => sum + (r.taste || 0), 0)) / totalRated).toFixed(1)
     : '0.0';
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -943,7 +1021,9 @@ function ProfileScreen({ user, setUser, tastings, tastingData, setCurrentScreen,
       <div className="px-5 relative z-10 space-y-8">
         <div className="bg-bg-panel border border-white/5 rounded-2xl p-6 shadow-xl">
           <div className="flex flex-col items-center mb-6">
-            <div 
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               className="relative w-24 h-24 rounded-full border-2 border-gold-main/50 overflow-hidden mb-4 bg-black/50 flex items-center justify-center cursor-pointer group"
               onClick={() => fileInputRef.current?.click()}
             >
@@ -955,7 +1035,19 @@ function ProfileScreen({ user, setUser, tastings, tastingData, setCurrentScreen,
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Camera className="w-6 h-6 text-white" />
               </div>
-            </div>
+              <AnimatePresence>
+                {isSaving && (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-black/60 flex items-center justify-center z-10"
+                  >
+                    <div className="w-6 h-6 border-2 border-gold-main border-t-transparent rounded-full animate-spin"></div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
             <h3 className="text-lg font-medium text-white">{displayName || 'Neznámy používateľ'}</h3>
             <p className="text-sm text-text-muted">{user?.email}</p>
           </div>
@@ -989,44 +1081,38 @@ function ProfileScreen({ user, setUser, tastings, tastingData, setCurrentScreen,
               </button>
             </div>
 
-            <div className="pt-2">
-              <label className="block text-text-muted text-xs mb-3 uppercase tracking-widest">Farebná téma</label>
-              <div className="flex flex-wrap gap-3">
-                {THEMES.map(theme => (
-                  <button
-                    key={theme.id}
-                    onClick={() => saveTheme(theme.color)}
-                    className={`w-10 h-10 rounded-full border-2 transition-transform shadow-lg ${userTheme.toUpperCase() === theme.color.toUpperCase() ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
-                    style={{ backgroundColor: theme.color }}
-                    title={theme.name}
-                  />
-                ))}
-                <div 
-                  className={`relative w-10 h-10 rounded-full overflow-hidden border-2 transition-transform shadow-lg ${!THEMES.find(t => t.color.toUpperCase() === userTheme.toUpperCase()) ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`} 
-                  title="Vlastná farba"
-                >
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ backgroundColor: userTheme }}>
-                    <span className="text-[10px] font-bold text-white mix-blend-difference">Vlastná</span>
-                  </div>
-                  <input 
-                    type="color" 
-                    value={userTheme}
-                    onChange={(e) => saveTheme(e.target.value)}
-                    className="absolute inset-[-10px] w-[60px] h-[60px] cursor-pointer opacity-0"
-                  />
-                </div>
-              </div>
-            </div>
-
             <motion.button 
               onClick={handleSave}
               disabled={isSaving}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full btn-gold py-3 rounded-xl font-medium flex items-center justify-center gap-2 mt-4"
+              className="w-full btn-gold py-3 rounded-xl font-medium flex items-center justify-center gap-2 mt-4 relative overflow-hidden"
             >
-              {isSaving ? <div className="w-5 h-5 border-2 border-bg-main border-t-transparent rounded-full animate-spin"></div> : <Save className="w-5 h-5" />}
-              Uložiť zmeny
+              <AnimatePresence mode="wait">
+                {isSaving ? (
+                  <motion.div 
+                    key="saving"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex items-center gap-2"
+                  >
+                    <div className="w-5 h-5 border-2 border-bg-main border-t-transparent rounded-full animate-spin"></div>
+                    Ukladá sa...
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key="save"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex items-center gap-2"
+                  >
+                    <Save className="w-5 h-5" />
+                    Uložiť zmeny
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.button>
           </div>
         </div>
@@ -1036,33 +1122,144 @@ function ProfileScreen({ user, setUser, tastings, tastingData, setCurrentScreen,
             <BarChart2 className="w-5 h-5" />
             Štatistiky degustácií
           </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-black/20 rounded-xl p-4 border border-white/5 text-center">
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 text-center"
+            >
               <div className="text-3xl font-heading text-gold-main mb-1">{totalTastings}</div>
               <div className="text-xs text-text-muted uppercase tracking-wider">Degustácie</div>
-            </div>
-            <div className="bg-black/20 rounded-xl p-4 border border-white/5 text-center">
+            </motion.div>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 text-center"
+            >
               <div className="text-3xl font-heading text-gold-main mb-1">{totalRated}</div>
               <div className="text-xs text-text-muted uppercase tracking-wider">Hodnotené vzorky</div>
-            </div>
-            <div className="bg-black/20 rounded-xl p-4 border border-white/5 text-center col-span-2">
+            </motion.div>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 text-center col-span-2"
+            >
               <div className="text-4xl font-heading text-gold-light mb-1">{avgOverall} <span className="text-lg text-gold-main/50">/ 10</span></div>
               <div className="text-xs text-text-muted uppercase tracking-wider">Priemerné hodnotenie</div>
-            </div>
+            </motion.div>
           </div>
+
+          <h3 className="text-lg gold-text mb-4 flex items-center gap-2">
+            <BarChart2 className="w-5 h-5" />
+            Pokročilé štatistiky degustácií
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-[#1a1a1a] rounded-xl p-3 border border-white/5 text-center flex flex-col justify-center items-center"
+            >
+              <Eye className="w-4 h-4 text-blue-400 mb-1" />
+              <div className="text-xl font-heading text-blue-400 mb-1">{avgVisual}</div>
+              <div className="text-[10px] text-blue-400/70 uppercase tracking-wider">Vizuál</div>
+            </motion.div>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="bg-[#1a1a1a] rounded-xl p-3 border border-white/5 text-center flex flex-col justify-center items-center"
+            >
+              <Wind className="w-4 h-4 text-emerald-400 mb-1" />
+              <div className="text-xl font-heading text-emerald-400 mb-1">{avgAroma}</div>
+              <div className="text-[10px] text-emerald-400/70 uppercase tracking-wider">Aróma</div>
+            </motion.div>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="bg-[#1a1a1a] rounded-xl p-3 border border-white/5 text-center flex flex-col justify-center items-center"
+            >
+              <Coffee className="w-4 h-4 text-amber-400 mb-1" />
+              <div className="text-xl font-heading text-amber-400 mb-1">{avgTaste}</div>
+              <div className="text-[10px] text-amber-400/70 uppercase tracking-wider">Chuť</div>
+            </motion.div>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="bg-[#1a1a1a] rounded-xl p-3 border border-white/5 text-center flex flex-col justify-center items-center"
+            >
+              <Award className="w-4 h-4 text-gold-main mb-1" />
+              <div className="text-xl font-heading text-gold-main mb-1">{avgOverall}</div>
+              <div className="text-[10px] text-gold-main/70 uppercase tracking-wider">Celkovo</div>
+            </motion.div>
+          </div>
+
+          <h3 className="text-lg gold-text mb-4 flex items-center gap-2">
+            <Globe className="w-5 h-5" />
+            Mapa ochutnávok
+          </h3>
+          <WorldMap tastingData={tastingData} samples={samples} themeColor={userTheme} />
         </div>
 
-        <motion.button 
-          onClick={handleLogout}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full py-4 rounded-xl border border-red-500/30 text-red-400 font-medium flex items-center justify-center gap-2 hover:bg-red-500/10 transition-colors"
-        >
-          <LogOut className="w-5 h-5" />
-          Odhlásiť sa
-        </motion.button>
+        <div className="space-y-3">
+          <motion.button 
+            onClick={() => setShowShareModal(true)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full py-4 rounded-xl border border-gold-main/30 text-gold-main font-medium flex items-center justify-center gap-2 hover:bg-gold-main/10 transition-colors"
+          >
+            <Share2 className="w-5 h-5" />
+            Zdieľať aplikáciu
+          </motion.button>
+
+          <motion.button 
+            onClick={handleLogout}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full py-4 rounded-xl border border-red-500/30 text-red-400 font-medium flex items-center justify-center gap-2 hover:bg-red-500/10 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            Odhlásiť sa
+          </motion.button>
+        </div>
       </div>
+
+      <AnimatePresence>
+        {showShareModal && (
+          <ShareModal onClose={() => setShowShareModal(false)} />
+        )}
+      </AnimatePresence>
     </motion.div>
+  );
+}
+
+function ShareModal({ onClose }: { onClose: () => void }) {
+  const url = "https://ais-pre-bkj6wlpxvkxpwnkoadeln5-27398007087.europe-west3.run.app";
+  return (
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex justify-center items-center z-50 p-5">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-bg-panel w-full max-w-sm border border-gold-main/40 rounded-2xl p-6 shadow-2xl flex flex-col items-center">
+        <div className="w-full flex justify-between items-center mb-6">
+          <h3 className="text-xl gold-text font-heading">Zdieľať aplikáciu</h3>
+          <button onClick={onClose} className="text-text-muted hover:text-gold-main transition-colors bg-white/5 p-2 rounded-full">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="bg-white p-4 rounded-xl mb-6">
+          <QRCode value={url} size={200} />
+        </div>
+        <p className="text-sm text-text-muted text-center mb-6">
+          Naskenujte tento QR kód pre otvorenie aplikácie The Cuba Libre na inom zariadení.
+        </p>
+        <button onClick={onClose} className="w-full py-3 rounded-xl bg-gold-main text-bg-dark font-semibold hover:bg-gold-light transition-colors">
+          Zavrieť
+        </button>
+      </motion.div>
+    </div>
   );
 }
 
@@ -1188,7 +1385,7 @@ function RatingModal({
   isAdmin?: boolean;
 }) {
   const [rating, setRating] = useState<RatingData>(
-    initialData || { visual: 0, aroma: 0, taste: 0, overall: 0, notes: '' }
+    initialData || { visual: 0, aroma: 0, taste: 0, overall: 0, notes: '', country: '', tags: [] }
   );
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [imageUrl, setImageUrl] = useState(customImage || sample.image);
@@ -1329,8 +1526,8 @@ function RatingModal({
               referrerPolicy="no-referrer"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                if (!target.src.includes('ui-avatars.com')) {
-                  target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(sample.name)}&background=141414&color=D4AF37&size=400`;
+                if (!target.src.includes('placehold.co')) {
+                  target.src = `https://placehold.co/600x400/141414/D4AF37?text=${encodeURIComponent(sample.name.split(' ').join('\n'))}`;
                 }
               }}
             />
@@ -1342,10 +1539,83 @@ function RatingModal({
         </div>
 
         <div className="space-y-7 mb-8">
-          <RatingGroup label="Vizuál (Farba, viskozita)" value={rating.visual} onChange={(v) => updateRating('visual', v)} />
-          <RatingGroup label="Vôňa (Aróma)" value={rating.aroma} onChange={(v) => updateRating('aroma', v)} />
-          <RatingGroup label="Chuť (Paleta chutí)" value={rating.taste} onChange={(v) => updateRating('taste', v)} />
-          <RatingGroup label="Celkový dojem" value={rating.overall} onChange={(v) => updateRating('overall', v)} />
+          <RatingGroup 
+            label="Vizuál (Farba, viskozita)" 
+            value={rating.visual} 
+            onChange={(v) => updateRating('visual', v)} 
+            icon={Eye}
+            colorClass="from-blue-600 via-blue-500 to-blue-400"
+            textClass="text-blue-400"
+          />
+          <RatingGroup 
+            label="Vôňa (Aróma)" 
+            value={rating.aroma} 
+            onChange={(v) => updateRating('aroma', v)} 
+            icon={Wind}
+            colorClass="from-emerald-600 via-emerald-500 to-emerald-400"
+            textClass="text-emerald-400"
+          />
+          <RatingGroup 
+            label="Chuť (Paleta chutí)" 
+            value={rating.taste} 
+            onChange={(v) => updateRating('taste', v)} 
+            icon={Coffee}
+            colorClass="from-amber-600 via-amber-500 to-amber-400"
+            textClass="text-amber-400"
+          />
+          <RatingGroup 
+            label="Celkový dojem" 
+            value={rating.overall} 
+            onChange={(v) => updateRating('overall', v)} 
+            icon={Award}
+            colorClass="from-gold-dark via-gold-main to-gold-light"
+            textClass="text-gold-main"
+          />
+        </div>
+
+        <div className="mb-8">
+          <label className="block text-text-muted text-xs mb-3 uppercase tracking-widest flex items-center gap-2">
+            <Bookmark className="w-3.5 h-3.5" />
+            Krajina pôvodu
+          </label>
+          <input
+            type="text"
+            className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-gold-light font-body text-base focus:outline-none focus:border-gold-main/50 focus:bg-black/40 transition-all duration-200 placeholder:text-white/20"
+            placeholder="Napr. Kuba, Jamajka, Barbados..."
+            value={rating.country || ''}
+            onChange={(e) => setRating((prev) => ({ ...prev, country: e.target.value }))}
+          />
+        </div>
+
+        <div className="mb-8">
+          <label className="block text-text-muted text-xs mb-3 uppercase tracking-widest flex items-center gap-2">
+            <Bookmark className="w-3.5 h-3.5" />
+            Chuťový profil (Tagy)
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {['Karamel', 'Vanilka', 'Dub', 'Dym', 'Ovocie', 'Korenie', 'Čokoláda', 'Káva', 'Med', 'Kokos', 'Melasa', 'Bylinky'].map(tag => {
+              const currentTags = rating.tags || [];
+              const isSelected = currentTags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  onClick={() => {
+                    const newTags = isSelected 
+                      ? currentTags.filter(t => t !== tag)
+                      : [...currentTags, tag];
+                    setRating(prev => ({ ...prev, tags: newTags }));
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${
+                    isSelected 
+                      ? 'bg-gold-main/20 border-gold-main text-gold-main' 
+                      : 'bg-black/20 border-white/10 text-text-muted hover:border-white/30 hover:text-white'
+                  }`}
+                >
+                  {tag}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="mb-8">
@@ -1370,19 +1640,22 @@ function RatingModal({
   );
 }
 
-function RatingGroup({ label, value, onChange }: { label: string; value: number; onChange: (val: number) => void }) {
+function RatingGroup({ label, value, onChange, icon: Icon, colorClass = "from-gold-dark via-gold-main to-gold-light", textClass = "text-gold-main" }: { label: string; value: number; onChange: (val: number) => void; icon?: React.ElementType; colorClass?: string; textClass?: string }) {
   const max = 10;
   return (
     <div className="mb-6">
       <div className="flex justify-between items-center mb-3">
-        <label className="text-text-muted text-xs uppercase tracking-widest">{label}</label>
-        <span className={`font-mono text-sm font-medium ${value > 0 ? 'text-gold-main' : 'text-text-muted'}`}>
+        <label className={`text-xs uppercase tracking-widest flex items-center gap-2 ${textClass || 'text-text-muted'}`}>
+          {Icon && <Icon className="w-4 h-4" />}
+          {label}
+        </label>
+        <span className={`font-mono text-sm font-medium ${value > 0 ? textClass : 'text-text-muted'}`}>
           {value}/{max}
         </span>
       </div>
       <div className="relative h-3 bg-black/40 rounded-full overflow-hidden border border-white/5 shadow-inner">
         <div 
-          className="absolute top-0 left-0 h-full bg-gradient-to-r from-gold-dark via-gold-main to-gold-light transition-all duration-300 ease-out"
+          className={`absolute top-0 left-0 h-full bg-gradient-to-r ${colorClass} transition-all duration-300 ease-out`}
           style={{ width: `${(value / max) * 100}%` }}
         />
         <input 
